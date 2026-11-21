@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "photo-curator"
+version = "0.1.0"
+description = "本地相册精选助手：RAW/JPG 配对浏览、两阶段清理与增量精选导出"
+readme = { text = "本地相册精选助手（开发中）", content-type = "text/markdown" }
+requires-python = ">=3.11,<3.14"
+license = { text = "UNLICENSED" }
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.32,<1",
+  "sqlalchemy>=2.0,<3",
+  "pillow>=11,<14",
+  "rawpy>=0.24,<1",
+  "watchdog>=6,<8",
+  "pydantic>=2.9,<3",
+  "python-dotenv>=1.0,<2",
+  "pyobjc-framework-Cocoa>=10.3,<14; sys_platform == 'darwin'",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<10",
+  "httpx>=0.28,<1",
+  "ruff>=0.9,<1",
+]
+
+[tool.setuptools]
+package-dir = { "" = "apps/server" }
+
+[tool.setuptools.packages.find]
+where = ["apps/server"]
+include = ["photo_curator*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "macos_trash: exercises the real macOS NSFileManager trash API",
+  "performance: large-album performance checks",
+  "e2e: end-to-end browser tests (run through Playwright)",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning:watchdog.*",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = ["apps/web", ".venv", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]

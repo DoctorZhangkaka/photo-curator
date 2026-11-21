@@ -1,0 +1,47 @@
+# --- Node / frontend ---
+# 防止误提交 tsc 生成的 JS（源码只使用 .ts/.tsx）
+apps/web/src/**/*.js
+apps/web/vite.config.js
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+apps/web/playwright-report/
+apps/web/test-results/
+coverage/
+playwright-report/
+test-results/
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# --- Local app data: database, preview cache, session token, logs ---
+data/
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.db-wal
+*.db-shm
+
+# --- Local secrets / machine-specific configuration ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- Test and debug artifacts ---
+tests/.tmp/
+artifacts/
+*.log
+.DS_Store
