@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink-950 text-ink-100 antialiased;
+    color: #e8ebef;
+    font-feature-settings: "tnum" 0;
+  }
+  ::selection {
+    background: rgba(227, 179, 65, 0.35);
+  }
+  :focus-visible {
+    outline: 2px solid #f0c45a;
+    outline-offset: 2px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3a4049 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: #2a2e35;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #3a4049;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.72);
+    opacity: 0.8;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent font-medium transition-colors;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400;
+    @apply disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-md {
+    @apply h-9 px-3.5 text-sm;
+  }
+  .btn-sm {
+    @apply h-8 px-2.5 text-xs;
+  }
+  .btn-primary {
+    @apply bg-accent-500 text-ink-950 hover:bg-accent-400 active:bg-accent-600;
+  }
+  .btn-secondary {
+    @apply border-white/10 bg-ink-800 text-ink-100 hover:border-white/15 hover:bg-ink-700;
+  }
+  .btn-ghost {
+    @apply text-ink-300 hover:bg-white/[0.06] hover:text-ink-100;
+  }
+  .btn-danger {
+    @apply border-red-500/25 bg-red-500/10 text-red-200 hover:border-red-500/35 hover:bg-red-500/20;
+  }
+  .field {
+    @apply rounded-lg border border-white/10 bg-ink-950/70 text-ink-100 transition-colors;
+    @apply placeholder:text-ink-600 hover:border-white/15;
+    @apply focus:border-accent-500/60 focus:outline-none focus:ring-1 focus:ring-accent-500/30;
+    @apply disabled:cursor-not-allowed disabled:opacity-50;
+    color-scheme: dark;
+  }
+  select.field option {
+    background-color: #17191d;
+    color: #e8ebef;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
