@@ -1,0 +1,23 @@
+{
+  "name": "photo-curator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "本地相册精选助手（RAW/JPG 配对、两阶段清理、精选导出）",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build --workspace @photo-curator/web",
+    "test": "npm run test --workspace @photo-curator/web",
+    "test:e2e": "npm run test:e2e --workspace @photo-curator/web",
+    "typecheck": "npm run typecheck --workspace @photo-curator/web",
+    "fixtures": ".venv/bin/python scripts/create-fixtures.py",
+    "server": ".venv/bin/python -m uvicorn photo_curator.main:app --host 127.0.0.1 --port 8765",
+    "test:server": ".venv/bin/python -m pytest"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  }
+}
