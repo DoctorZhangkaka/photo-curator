@@ -1,0 +1,5 @@
+{
+  "name": "@photo-curator/e2e",
+  "private": true,
+  "type": "module"
+}

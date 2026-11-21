@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create virtualenv and install backend
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install -p .venv -e ".[dev]"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Backend tests (native trash test excluded on shared runner)
+        run: .venv/bin/python -m pytest -m "not macos_trash"
+
+      - name: Frontend typecheck
+        run: npm run typecheck
+
+      - name: Frontend unit tests
+        run: npm test
+
+      - name: Frontend production build
+        run: npm run build
