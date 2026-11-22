@@ -51,6 +51,12 @@ def _format_exposure(value: Any) -> str | None:
     return f"1/{denominator}"
 
 
+def _clean_text(value: Any) -> str:
+    """清理 EXIF ASCII 标签的 NUL 填充与首尾空白。"""
+
+    return str(value).replace("\x00", "").strip()
+
+
 def _to_float(value: Any) -> float | None:
     try:
         return float(value)
@@ -84,12 +90,15 @@ def _build_metadata(
     data: dict[str, Any] = {}
     if capture_time:
         data["captureTime"] = capture_time
-    if make:
-        data["cameraMake"] = str(make).strip()
-    if model:
-        data["cameraModel"] = str(model).strip()
-    if lens:
-        data["lensModel"] = str(lens).strip()
+    make_text = _clean_text(make) if make else ""
+    model_text = _clean_text(model) if model else ""
+    lens_text = _clean_text(lens) if lens else ""
+    if make_text:
+        data["cameraMake"] = make_text
+    if model_text:
+        data["cameraModel"] = model_text
+    if lens_text:
+        data["lensModel"] = lens_text
     focal_value = _to_float(focal)
     if focal_value:
         data["focalLength"] = round(focal_value, 2)
