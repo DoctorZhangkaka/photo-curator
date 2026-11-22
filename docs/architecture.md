@@ -124,6 +124,8 @@ POST organize/preflight
 POST organize/execute {token, idempotencyKey}
   ├─ 幂等/令牌/占用校验同清理
   ├─ 执行前再次校验路径、目标、size/mtime、配对状态
+  ├─ 若 keepBackup：完整复制相册到 <相册> 副本，写 .photo-curator-ignore，
+  │   逐文件校验字节内容；失败则清理未完成备份，原相册不变
   ├─ 创建 JPG/、RAW/（若不存在），拒绝符号链接/同名文件
   ├─ 逐文件：link+unlink（目标存在原子失败）→ Asset.relative_path 更新
   ├─ 任一失败：回滚已移动文件与 DB 路径，未执行项标记 failed
@@ -137,7 +139,7 @@ POST operations/{organizeId}/restore
   └─ 全部成功：原 operation=restored；本次新建的空 JPG/RAW 目录移除
 ```
 
-整理和清理、导出、扫描共享相册锁。崩溃后整理操作显示 `interrupted`；已记录的 success 项仍可通过操作详情撤销，未记录成功的半移动文件需要在 Finder/操作明细中人工核对。
+整理和清理、导出、扫描共享相册锁。备份使用同一 Album/PhotoGroup/Asset ID，整理只更新 Asset.relative_path，因此查看/精选/待删除/封面与操作记录自然保留；备份不是新的 Album，也不参与扫描。备份保留到人工确认并手动删除，撤销整理不自动删除备份。崩溃后整理操作显示 `interrupted`；已记录的 success 项仍可通过操作详情撤销，未记录成功的半移动文件需要在 Finder/操作明细中人工核对。
 
 ## 7. 导出协议
 
