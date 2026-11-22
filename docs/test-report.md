@@ -13,11 +13,11 @@
 | 后端原生 macOS 废纸篓专项 | `.venv/bin/python -m pytest tests/integration/test_trash_macos.py -v` | **2 passed**（真实 `NSFileManager`，夹具已恢复并清理） |
 | 大相册性能 | `.venv/bin/python -m pytest tests/performance -q -s` | **1 passed**：扫描 1000 张逻辑照片 **0.71s**，首屏 200 张 **0.010s**，遍历全部 5 页 **0.04s** |
 | 前端类型检查 | `npm run typecheck` | **通过**（TypeScript strict，`tsc -b`） |
-| 前端单元/交互测试 | `npm test` | **14 passed**（Vitest 5.1.1，2 个测试文件） |
-| 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 496.74 kB（gzip 148.53 kB），CSS 34.88 kB（gzip 7.42 kB） |
+| 前端单元/交互测试 | `npm test` | **17 passed**（Vitest 5.1.1，3 个测试文件） |
+| 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 502.73 kB（gzip 150.24 kB），CSS 36.23 kB（gzip 7.58 kB） |
 | 依赖安全审计 | `npm audit` | **0 vulnerabilities** |
 | GitHub Actions（macOS） | 全部 PR 与 `main` | **通过**（后端测试、类型检查、Vitest、生产构建） |
-| Playwright 端到端 | `npm run test:e2e` | **2 passed**，11.0s；使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
+| Playwright 端到端 | `npm run test:e2e` | **2 passed**，11.6s；含默认适应视图与清理缩略图悬浮预览，使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
 
 测试数量构成：54 个单元测试（配对、自然排序、路径安全、EXIF 文本清理与 ExifTool 解析）、74 个集成/接口测试、1 个性能测试。
 
@@ -84,10 +84,17 @@
 
 ## 4. 前端测试覆盖
 
-`npm test`：14 个测试全部通过。
+`npm test`：17 个测试全部通过。
 
-- `src/pages/CullerPage.test.tsx`（11 个）：按 F 精选、X/Delete 只改状态且不移动文件、输入框/select 聚焦时快捷键不触发、自动播放暂停、方向键/胶片栏边界、排序/过滤保留当前照片与回退首张、大图加载成功后才标记已浏览、409 `STALE_VERSION` 刷新重试、虚拟化胶片栏只挂载子集、弹窗焦点约束/Esc、清理预检阻止项、清理成功 + 严重错误 + 组统计 + 撤销、UUID 幂等键。
+- `src/pages/CullerPage.test.tsx`（12 个）：按 F 精选、X/Delete 只改状态且不移动文件、输入框/select 聚焦时快捷键不触发、自动播放暂停、方向键/胶片栏边界、排序/过滤保留当前照片与回退首张、进入相册/切换照片后默认为适应视图、大图加载成功后才标记已浏览、409 `STALE_VERSION` 刷新重试、虚拟化胶片栏只挂载子集、弹窗焦点约束/Esc、清理预检阻止项、清理缩略图悬浮预览、清理成功 + 严重错误 + 组统计 + 撤销、UUID 幂等键。
+- `src/components/culler/Filmstrip.test.tsx`（2 个）：左右翻批按钮存在与禁用状态、点击右翻按视口宽度滚动（不是只移动一张）。
 - `src/components/ui/Modal.test.tsx`（3 个）：焦点陷阱、Esc 关闭、关闭后焦点恢复。
+
+本轮 UI 增补（0.2.0）：
+
+- 清理确认页每个逻辑照片组显示缩略图，悬浮/聚焦弹出同源大图预览；预览失败有明确提示，不暴露任意路径。
+- 进入相册与切换照片默认「适应」；高分辨率屏幕上小于视口的预览会放大到适应，而 100% 按钮仍严格使用原图预览。
+- 胶片栏新增上一批/下一批按钮，按视口宽度滚动；接近末尾时自动加载下一页并继续滚动，加载新页不会把视口拉回当前照片。
 
 类型检查与生产构建：
 
@@ -96,8 +103,8 @@ tsc -b → 通过
 vite v7.3.8 building client environment for production...
 ✓ 1674 modules transformed.
 dist/index.html                   0.45 kB │ gzip:   0.31 kB
-dist/assets/index-BwznooAt.css   34.88 kB │ gzip:   7.42 kB
-dist/assets/index-kA9pWrpD.js   496.74 kB │ gzip: 148.53 kB
+dist/assets/index-DCciYU0C.css   36.23 kB │ gzip:   7.58 kB
+dist/assets/index-DxkMtSeI.js   502.73 kB │ gzip: 150.24 kB
 ✓ built in 1.15s
 ```
 
