@@ -23,6 +23,7 @@ import { createId } from "../../lib/id";
 import { formatBytes, formatDateTime } from "../../lib/format";
 import { useCleanupExecute, useRestoreOperation } from "../../hooks/useMutations";
 import { Modal } from "../ui/Modal";
+import { HoverPreview } from "../ui/HoverPreview";
 import { Button } from "../ui/Button";
 import { ErrorState, Skeleton } from "../ui/StateViews";
 import { ItemResultChip, OperationStatusChip, StatusChip } from "../StatusChips";
@@ -362,38 +363,67 @@ export function CleanupDialog({ open, albumId, albumName, onClose, onPauseAutopl
               </div>
             ) : (
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
-                {preflight.groups.map((group) => (
-                  <li
-                    key={group.groupId}
-                    className={
-                      group.blocked
-                        ? "rounded-lg border border-red-500/25 bg-red-500/[0.04] px-3 py-2"
-                        : "rounded-lg border border-white/[0.07] bg-ink-850/60 px-3 py-2"
-                    }
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-mono text-xs text-ink-200">{group.displayName}</span>
-                      <div className="flex items-center gap-1.5">
-                        <StatusChip tone={group.pairingStatus === "normal" ? "neutral" : "warning"}>
-                          {group.pairingStatus === "normal" ? "配对正常" : group.pairingStatus === "conflict" ? "配对冲突" : "文件缺失"}
-                        </StatusChip>
-                        {group.blocked ? (
-                          <StatusChip icon={AlertTriangle} tone="danger">
-                            已阻止
-                          </StatusChip>
+                {preflight.groups.map((group) => {
+                  const primaryAsset =
+                    group.assets.find((asset) => asset.kind === "jpg") ?? group.assets[0];
+                  const version = primaryAsset?.mtimeNs ?? 0;
+                  const thumbnailUrl = primaryAsset
+                    ? `/api/photos/${group.groupId}/thumbnail?v=${version}`
+                    : null;
+                  const previewUrl = primaryAsset
+                    ? `/api/photos/${group.groupId}/preview?v=${version}`
+                    : null;
+                  const groupBytes = group.assets.reduce((total, asset) => total + asset.sizeBytes, 0);
+                  return (
+                    <li
+                      key={group.groupId}
+                      className={
+                        group.blocked
+                          ? "rounded-lg border border-red-500/25 bg-red-500/[0.04] px-3 py-2"
+                          : "rounded-lg border border-white/[0.07] bg-ink-850/60 px-3 py-2"
+                      }
+                    >
+                      <div className="flex gap-2.5">
+                        {thumbnailUrl && previewUrl ? (
+                          <HoverPreview
+                            thumbnailUrl={thumbnailUrl}
+                            previewUrl={previewUrl}
+                            alt={`${group.displayName} 待删除照片`}
+                            caption={`${group.displayName} · ${group.assets.length} 个文件 · ${formatBytes(groupBytes)}`}
+                            testId="cleanup-thumbnail"
+                          />
                         ) : null}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-mono text-xs text-ink-200">{group.displayName}</span>
+                            <div className="flex items-center gap-1.5">
+                              <StatusChip tone={group.pairingStatus === "normal" ? "neutral" : "warning"}>
+                                {group.pairingStatus === "normal"
+                                  ? "配对正常"
+                                  : group.pairingStatus === "conflict"
+                                    ? "配对冲突"
+                                    : "文件缺失"}
+                              </StatusChip>
+                              {group.blocked ? (
+                                <StatusChip icon={AlertTriangle} tone="danger">
+                                  已阻止
+                                </StatusChip>
+                              ) : null}
+                            </div>
+                          </div>
+                          <ul className="mt-1.5 space-y-1">
+                            {group.assets.map((asset) => (
+                              <li key={asset.assetId} className="flex items-center justify-between gap-2">
+                                <span className="break-all font-mono text-[10px] text-ink-400">{asset.relativePath}</span>
+                                <span className="shrink-0 text-[10px] text-ink-600">{formatBytes(asset.sizeBytes)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
-                    </div>
-                    <ul className="mt-1.5 space-y-1">
-                      {group.assets.map((asset) => (
-                        <li key={asset.assetId} className="flex items-center justify-between gap-2">
-                          <span className="break-all font-mono text-[10px] text-ink-400">{asset.relativePath}</span>
-                          <span className="shrink-0 text-[10px] text-ink-600">{formatBytes(asset.sizeBytes)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
