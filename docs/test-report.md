@@ -9,16 +9,17 @@
 
 | 检查项 | 命令 | 结果 |
 | --- | --- | --- |
-| 后端单元 + 集成 + 原生废纸篓 + 性能 | `.venv/bin/python -m pytest -q` | **124 passed**，1 warning，5.83s |
+| 后端单元 + 集成 + 原生废纸篓 + 性能 | `.venv/bin/python -m pytest -q` | **127 passed**，1 warning，5.94s |
 | 后端原生 macOS 废纸篓专项 | `.venv/bin/python -m pytest tests/integration/test_trash_macos.py -v` | **2 passed**（真实 `NSFileManager`，夹具已恢复并清理） |
 | 大相册性能 | `.venv/bin/python -m pytest tests/performance -q -s` | **1 passed**：扫描 1000 张逻辑照片 **0.71s**，首屏 200 张 **0.010s**，遍历全部 5 页 **0.04s** |
 | 前端类型检查 | `npm run typecheck` | **通过**（TypeScript strict，`tsc -b`） |
 | 前端单元/交互测试 | `npm test` | **14 passed**（Vitest 5.1.1，2 个测试文件） |
 | 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 496.74 kB（gzip 148.53 kB），CSS 34.88 kB（gzip 7.42 kB） |
 | 依赖安全审计 | `npm audit` | **0 vulnerabilities** |
+| GitHub Actions（macOS） | PR #1~#3 与 `main` | **通过**（后端测试、类型检查、Vitest、生产构建） |
 | Playwright 端到端 | `npm run test:e2e` | **2 passed**，11.0s；使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
 
-测试数量构成：49 个单元测试（配对、自然排序、路径安全）、74 个集成/接口测试、1 个性能测试。
+测试数量构成：52 个单元测试（配对、自然排序、路径安全、EXIF 文本清理）、74 个集成/接口测试、1 个性能测试。
 
 唯一警告来自 FastAPI/Starlette 的测试客户端对 `httpx` 的弃用提示，不影响运行；没有测试被跳过。
 
@@ -31,6 +32,7 @@
 | `tests/unit/test_pairing.py` | 18 | PAIR-001 ~ PAIR-016：大小写、跨 RAW/JPG 目录、JPEG/ARW/DNG、仅单格式、重复 JPG、重复 RAW、多 RAW 格式、Unicode NFC、纯大小写冲突、重命名产生新配对键、JPG 优先展示 |
 | `tests/unit/test_paths.py` | 24 | `..`、绝对路径、嵌套深度、导出目录逃逸、文件/目录符号链接、导出目标符号链接、文件名注入 |
 | `tests/unit/test_natural.py` | 7 | 数字自然排序（2 < 10）、大小写、Unicode、EXIF 时间格式、预检过期判断 |
+| `tests/unit/test_metadata.py` | 3 | Pillow 读取 JPG 元数据、EXIF 文本去 NUL 填充、时间/光圈/ISO/尺寸 |
 
 ### 2.2 集成/接口测试
 
@@ -56,7 +58,26 @@
 
 断言：扫描 < 30s、首屏 < 3s、遍历全部分页 < 8s。实际远低于目标；真实高像素照片的首次缩略图/RAW 解码会更慢，不在此指标内。
 
-## 3. 前端测试覆盖
+## 3. 真实富士 RAF 只读验证（用户授权）
+
+用户提供一个真实富士相册作为测试相册，并确认有独立备份。为遵守“不修改真实照片”的约束，本次验证**只读**：使用临时数据目录扫描、生成缓存预览，未执行导出或清理，未写入源目录。
+
+| 项目 | 结果 |
+| --- | --- |
+| 文件构成 | 975 个文件：568 个 JPG、407 个 RAF（无其他格式） |
+| 配对 | 407 个 RAF 全部有同名 JPG；应用扫描为 **407 个 JPG＋RAW 配对 + 161 个仅 JPG = 568 张逻辑照片**，0 配对冲突 |
+| LibRaw 打开 | **407 / 407** 个 RAF 成功，统一为 6336×4182，耗时 0.43s |
+| 抽样解码 | 5 个均匀分布的 RAF 全部 `postprocess(half_size=True)` 成功，约 0.12s/张 |
+| 应用扫描 | 0.89s 完成 975 个文件/568 组，0 缺失/0 冲突/0 异常 |
+| RAF 预览 | 应用内对真实 RAF 生成缩略图 0.16s、2560 预览 0.20s，均为 JPEG 200 |
+| JPG 元数据 | 正确读出 FUJIFILM X-S20、XF56mm F1.2 R、1/4000、f/1.2、ISO 160、6240×4160、拍摄时间 |
+| 源目录 | 验证后仍为 975 个文件；临时数据库/预览缓存已删除 |
+
+验证中发现并修复了一个真实缺陷：Pillow 返回的镜头字符串带 NUL 填充，原先会显示为乱码尾部；现在 `_clean_text()` 会清理 NUL 与首尾空白，并新增 3 个单元测试。修复后用真实 JPG 复验，镜头显示为 `XF56mmF1.2 R`。
+
+该相册没有 RAW-only 组，因此 RAW-only 的排序回退仍由合成 DNG/伪造 RAW 测试覆盖。索尼 ARW 仍未做真实验证。
+
+## 4. 前端测试覆盖
 
 `npm test`：14 个测试全部通过。
 
@@ -75,7 +96,7 @@ dist/assets/index-kA9pWrpD.js   496.74 kB │ gzip: 148.53 kB
 ✓ built in 1.15s
 ```
 
-## 4. 端到端验收（Playwright，生产构建）
+## 5. 端到端验收（Playwright，生产构建）
 
 命令：`npm run test:e2e`。`tests/e2e/start-server.mjs` 每次重新生成临时夹具（`tests/.tmp/e2e-photos`），构建前端，启动只监听 `127.0.0.1:8799` 的后端；结束后清理临时数据。**不使用真实相册。**
 
@@ -112,7 +133,7 @@ dist/assets/index-kA9pWrpD.js   496.74 kB │ gzip: 148.53 kB
 
 浏览器验收还检查了 1440×900、768 宽与 480 宽布局、全屏进入/Esc 退出、适应/100%/缩放、导出重复执行显示“已存在跳过”、清理备份提示只首次出现、会话不可用时的阻断页与重试。截图均使用 `/tmp` 下生成的测试相册。
 
-## 5. 与产品验收链路的对应关系
+## 6. 与产品验收链路的对应关系
 
 | 产品要求 | 验证方式 |
 | --- | --- |
@@ -120,16 +141,18 @@ dist/assets/index-kA9pWrpD.js   496.74 kB │ gzip: 148.53 kB
 | 人像约拍相册（通用术语、ARW/RAF 混合、排序、组合过滤、增量导出、外部变化、缺失恢复、操作记录） | `test_albums_scan`（人像相册名）、`test_pairing`（ARW/RAF/DNG）、`test_state_api`（排序/组合过滤）、`test_export`（增量）、`test_watcher`（外部变化）、`test_albums_scan`（缺失与恢复）、`test_operations_db`（记录）；UI 文案检查由前端测试与截图覆盖 |
 | 异常链路：JPG 对多 RAW、同名不同内容、第二步失败、恢复冲突、RAW 解码失败 | `test_pairing`、`test_export`、`test_cleanup`（注入失败）、`test_extra`（RAW 失败） |
 | 无永久删除 | `test_cleanup`（断言所有执行结果位于废纸篓且无删除入口）、真实原生废纸篓测试 |
+| 真实富士 RAF 支持 | 真实相册只读验证（407/407 LibRaw 打开、抽样解码、应用内预览） |
 | 安全边界 | `test_paths`、`test_security`、静态 CSP/同源测试 |
 | 重启状态保留 | `test_state_api::test_state_persists_across_restart` |
 | 崩溃恢复 | `test_operations_db::test_recover_interrupted_operations` |
 | 1000 张性能 | `tests/performance` |
 
-## 6. 未执行 / 无法在本机验证的项
+## 7. 未执行 / 无法在本机验证的项
 
 为避免伪造通过，以下项目明确未验证：
 
-- **真实富士 RAF / 索尼 ARW 相机样本**：仓库和本机测试未提供。RAW 解码路径使用程序生成、LibRaw 可解码的合成 DNG 验证；伪造的 `.RAF/.ARW` 只用于配对与失败提示。真实机型的 RAW 解码取决于 rawpy/LibRaw 对该型号的支持。
+- **索尼 ARW 真实相机样本**：未提供、未验证。真实富士 RAF 已按上文做只读验证；自动化夹具仍不含真实 RAW。其他富士/索尼机型取决于 rawpy/LibRaw 支持。
+- **真实相册上的导出/清理**：虽然用户授权该文件夹作为测试目录，但为降低风险，只做了只读扫描与预览；导出/清理仍在临时夹具上验证。
 - **ExifTool 元数据读取**：本机未安装 ExifTool，未验证真实 RAW 的拍摄时间/镜头信息；仅验证了缺失时回退与健康检查提示。
 - **在 Finder 中点击“在 Finder 中显示”**：E2E 未触发系统 Finder 窗口；后端只做了路径校验与参数数组调用，需要人工在真实桌面确认窗口行为（不涉及照片修改）。
 - **外接卷/网络卷导出**：导出发布依赖 `os.link`；不支持硬链接的卷会明确失败并记录，未在真实网络卷验证。
@@ -139,7 +162,7 @@ dist/assets/index-kA9pWrpD.js   496.74 kB │ gzip: 148.53 kB
 - **清空 macOS 废纸篓后的恢复**：按设计无法恢复，未做（也不应做）破坏性验证。
 - **真实用户相册的只读/清理验证**：按约束明确不执行。
 
-## 7. 测试环境清理
+## 8. 测试环境清理
 
 - pytest 临时目录由 pytest 自动删除；`tests/.tmp` 仅用于导入默认应用/ E2E 夹具，已 gitignore。
 - 原生废纸篓测试与 E2E 均在成功后恢复/删除自己创建的夹具；检查 `~/.Trash` 中无 `DSCF`/`DSC0`/`pc-trash` 残留。

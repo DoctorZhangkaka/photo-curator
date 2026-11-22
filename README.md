@@ -157,6 +157,8 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+真实 RAW 只读验证：已用一个真实的富士 X-S20 RAF 相册（975 个文件，407 个 RAF 全部与同名 JPG 配对）完成只读扫描与预览验证；407/407 个 RAF 由 LibRaw 成功打开，抽样解码与缩略图/预览生成正常，源目录未被修改。验证样本没有提交到仓库。
+
 测试约束（硬性）：
 
 - 自动化测试绝不使用 `/Users/eason/Desktop/相册`；所有根目录指向 pytest/Playwright 临时目录。
