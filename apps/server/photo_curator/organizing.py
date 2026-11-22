@@ -12,8 +12,10 @@
 from __future__ import annotations
 
 import errno
+import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from .config import Settings
 from .constants import (
+    IGNORE_MARKER,
     ITEM_CONFLICT,
     ITEM_FAILED,
     ITEM_PENDING,
@@ -114,6 +117,95 @@ def _move_no_overwrite(source: Path, destination: Path) -> None:
         raise
 
 
+def _tree_usage(root: Path) -> tuple[int, int, list[str]]:
+    total = 0
+    count = 0
+    symlinks: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        kept_dirs = []
+        for dirname in dirnames:
+            path = Path(dirpath) / dirname
+            if path.is_symlink():
+                symlinks.append(str(path.relative_to(root)))
+            else:
+                kept_dirs.append(dirname)
+        dirnames[:] = kept_dirs
+        for filename in filenames:
+            path = Path(dirpath) / filename
+            if path.is_symlink():
+                symlinks.append(str(path.relative_to(root)))
+                continue
+            try:
+                total += path.stat().st_size
+                count += 1
+            except OSError:
+                continue
+    return total, count, symlinks
+
+
+def _copy_verified(source: Path, destination: Path) -> int:
+    """复制并校验字节内容；任一异常都删除未完成目标并抛出。"""
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    before = source.stat()
+    digest = hashlib.sha256()
+    size = 0
+    try:
+        with source.open("rb") as reader, destination.open("xb") as writer:
+            while True:
+                chunk = reader.read(1024 * 1024)
+                if not chunk:
+                    break
+                writer.write(chunk)
+                digest.update(chunk)
+                size += len(chunk)
+        shutil.copystat(source, destination, follow_symlinks=False)
+        after = source.stat()
+        if (
+            size != before.st_size
+            or destination.stat().st_size != size
+            or after.st_size != before.st_size
+            or after.st_mtime_ns != before.st_mtime_ns
+        ):
+            raise OSError("复制期间源文件发生变化")
+    except BaseException:
+        destination.unlink(missing_ok=True)
+        raise
+    return size
+
+
+def _copy_album_backup(source: Path, backup: Path) -> tuple[int, int]:
+    """完整复制相册目录（包含非照片文件），并写入扫描忽略标记。"""
+
+    backup.mkdir()
+    (backup / IGNORE_MARKER).write_text(
+        "photo-curator backup; excluded from album discovery\n", encoding="utf-8"
+    )
+    total = 0
+    count = 0
+    for dirpath, dirnames, filenames in os.walk(source, followlinks=False):
+        relative = Path(dirpath).relative_to(source)
+        target_dir = backup / relative
+        target_dir.mkdir(parents=True, exist_ok=True)
+        kept_dirs = []
+        for dirname in dirnames:
+            path = Path(dirpath) / dirname
+            if path.is_symlink():
+                raise OSError(f"符号链接不支持备份：{path}")
+            kept_dirs.append(dirname)
+        dirnames[:] = kept_dirs
+        for dirname in kept_dirs:
+            (target_dir / dirname).mkdir(exist_ok=True)
+        for filename in filenames:
+            source_file = Path(dirpath) / filename
+            if source_file.is_symlink():
+                raise OSError(f"符号链接不支持备份：{source_file}")
+            copied = _copy_verified(source_file, target_dir / filename)
+            total += copied
+            count += 1
+    return total, count
+
+
 def _group_index_map(groups: list[PhotoGroup]) -> dict[str, int]:
     return {group.id: index for index, group in enumerate(groups)}
 
@@ -141,7 +233,7 @@ class OrganizeService:
     # ------------------------------------------------------------------
     # 预检
     # ------------------------------------------------------------------
-    def preflight(self, album_id: str) -> dict[str, Any]:
+    def preflight(self, album_id: str, *, keep_backup: bool = False) -> dict[str, Any]:
         session = self.database.session()
         try:
             album = session.get(Album, album_id)
@@ -164,11 +256,13 @@ class OrganizeService:
                         status_code=409,
                         details={"reason": outcome.error[:500]},
                     )
-                return self._build_preflight(session, album)
+                return self._build_preflight(session, album, keep_backup=keep_backup)
         finally:
             session.close()
 
-    def _build_preflight(self, session: Session, album: Album) -> dict[str, Any]:
+    def _build_preflight(
+        self, session: Session, album: Album, *, keep_backup: bool = False
+    ) -> dict[str, Any]:
         album_dir = self.guard.album_dir(album.relative_path, must_exist=True)
         existing_dirs = {
             "JPG": (album_dir / "JPG").is_dir() and not (album_dir / "JPG").is_symlink(),
@@ -188,6 +282,53 @@ class OrganizeService:
         target_keys: dict[str, str] = {}
         groups_with_items: set[str] = set()
         group_indexes = _group_index_map(groups)
+        backup: dict[str, Any] | None = None
+
+        if keep_backup:
+            backup_name = f"{album.name} 副本"
+            try:
+                backup_dir = self.guard.album_dir(backup_name, must_exist=False)
+                if backup_dir.exists() or backup_dir.is_symlink():
+                    blockers.append(
+                        {
+                            "code": ErrorCode.DESTINATION_CONFLICT,
+                            "message": f"备份目录已存在：{backup_name}。请先改名或删除后再试。",
+                            "relativePath": backup_name,
+                        }
+                    )
+                else:
+                    total, file_count, symlinks = _tree_usage(album_dir)
+                    if symlinks:
+                        blockers.append(
+                            {
+                                "code": ErrorCode.PATH_OUTSIDE_ROOT,
+                                "message": "相册内包含符号链接，无法创建完整备份。请先在 Finder 中处理。",
+                                "relativePath": symlinks[0],
+                            }
+                        )
+                    else:
+                        free = shutil.disk_usage(album_dir).free
+                        required = total + max(50 * 1024 * 1024, int(total * 0.05))
+                        if free < required:
+                            blockers.append(
+                                {
+                                    "code": ErrorCode.DESTINATION_CONFLICT,
+                                    "message": (
+                                        f"磁盘剩余空间不足：备份需要 {total} 字节，"
+                                        f"安全余量后需要 {required} 字节，当前仅 {free} 字节。"
+                                    ),
+                                    "relativePath": backup_name,
+                                }
+                            )
+                        else:
+                            backup = {
+                                "relativePath": backup_name,
+                                "absolutePath": str(backup_dir),
+                                "bytes": total,
+                                "fileCount": file_count,
+                            }
+            except ApiError as exc:
+                blockers.append({"code": exc.code, "message": exc.message, "relativePath": backup_name})
 
         for group in groups:
             present_assets = [asset for asset in group.assets if asset.presence_status == PRESENCE_PRESENT]
@@ -372,6 +513,7 @@ class OrganizeService:
                 "blocked": True,
                 "blockers": blockers,
                 "entries": entries,
+                "backup": backup,
                 "message": "存在阻止项，整批整理未执行。请先处理冲突或缺失文件，然后重新预检。",
             }
         if not moves:
@@ -385,6 +527,7 @@ class OrganizeService:
                 "blocked": False,
                 "blockers": [],
                 "entries": entries,
+                "backup": backup,
                 "message": "相册已经按 JPG/RAW 整理好，无需移动文件。",
             }
 
@@ -400,6 +543,7 @@ class OrganizeService:
                 "blockers": blockers,
                 "summary": summary,
                 "existingDirs": existing_dirs,
+                "backup": backup,
             },
         )
         for entry in entries:
@@ -423,7 +567,7 @@ class OrganizeService:
             album_id=album.id,
             kind=PREFLIGHT_ORGANIZE,
             operation_id=operation.id,
-            payload={"entries": entries, "blockers": blockers, "summary": summary},
+            payload={"entries": entries, "blockers": blockers, "summary": summary, "backup": backup},
             ttl_seconds=self.settings.preflight_ttl_seconds,
         )
         return {
@@ -436,9 +580,11 @@ class OrganizeService:
             "blocked": False,
             "blockers": [],
             "entries": entries,
+            "backup": backup,
             "message": (
-                f"将把 {len(moves)} 个文件原地移动到相册内的 JPG/RAW 子目录；"
-                f"其中 {len(skips)} 个已经在正确位置。原文件不会被删除。"
+                (f"将先创建完整备份「{backup['relativePath']}」，再" if backup else "将")
+                + f"把 {len(moves)} 个文件原地移动到相册内的 JPG/RAW 子目录；"
+                + f"其中 {len(skips)} 个已经在正确位置。原文件不会被删除。"
             ),
         }
 
@@ -602,8 +748,19 @@ class OrganizeService:
         moved: list[tuple[OperationItem, Asset, Path, Path]] = []
         success = 0
 
+        backup_info = payload.get("backup") if isinstance(payload.get("backup"), dict) else None
+        backup_dir: Path | None = None
         try:
             album_dir = self.guard.album_dir(album.relative_path, must_exist=True)
+            if backup_info:
+                backup_dir = self.guard.album_dir(backup_info["relativePath"], must_exist=False)
+                if backup_dir.exists() or backup_dir.is_symlink():
+                    raise ApiError(
+                        ErrorCode.DESTINATION_CONFLICT,
+                        f"备份目录已存在：{backup_info['relativePath']}",
+                        status_code=409,
+                    )
+                _copy_album_backup(album_dir, backup_dir)
             for kind_dir in ("JPG", "RAW"):
                 directory = album_dir / kind_dir
                 if directory.exists():
@@ -626,8 +783,11 @@ class OrganizeService:
                     session.commit()
         except (ApiError, OSError) as exc:
             self._cleanup_empty_dirs(created_dirs)
-            self._fail_all(session, operation, exc_message=f"无法准备 JPG/RAW 目录：{exc}")
-            return self._result(session, album, operation, error_summary=f"无法准备 JPG/RAW 目录：{exc}")
+            if backup_dir is not None and backup_dir.exists() and not moved:
+                shutil.rmtree(backup_dir, ignore_errors=True)
+            message = f"无法准备备份或 JPG/RAW 目录：{exc}"
+            self._fail_all(session, operation, exc_message=message)
+            return self._result(session, album, operation, error_summary=message)
 
         for index, entry in enumerate(moves):
             item = item_by_asset.get(entry["assetId"])
@@ -757,6 +917,7 @@ class OrganizeService:
     ) -> dict[str, Any]:
         session.refresh(operation)
         items = operation_items(session, operation.id)
+        snapshot = json.loads(operation.request_snapshot_json or "{}")
         return {
             "operation": operation_to_dict(
                 operation,
@@ -764,7 +925,8 @@ class OrganizeService:
                 items=items,
                 can_restore=can_restore_organize(operation, items),
             ),
-            "summary": json.loads(operation.request_snapshot_json or "{}").get("summary"),
+            "summary": snapshot.get("summary"),
+            "backup": snapshot.get("backup"),
             "blockers": [],
             "idempotentReplay": False,
         }
@@ -992,6 +1154,7 @@ class OrganizeService:
                 can_restore=can_restore_organize(operation, items),
             ),
             "summary": json.loads(operation.request_snapshot_json or "{}").get("summary"),
+            "backup": json.loads(operation.request_snapshot_json or "{}").get("backup"),
             "blockers": [],
             "idempotentReplay": True,
         }

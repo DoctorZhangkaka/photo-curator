@@ -533,6 +533,7 @@ def discover_albums(session: Session, settings, guard: PathGuard) -> dict[str, A
         "rootImagesIgnored": 0,
         "skippedSymlinks": [],
         "skippedHidden": 0,
+        "ignoredBackups": 0,
         "errors": [],
     }
     root = settings.photo_root
@@ -568,6 +569,9 @@ def discover_albums(session: Session, settings, guard: PathGuard) -> dict[str, A
             report["exportDirExcluded"] = True
             continue
         entry_path = Path(entry.path)
+        if (entry_path / ".photo-curator-ignore").is_file():
+            report["ignoredBackups"] += 1
+            continue
         try:
             entry_path.resolve().relative_to(root.resolve())
         except ValueError:

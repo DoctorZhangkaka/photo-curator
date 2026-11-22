@@ -15,6 +15,12 @@ class PhotoStatePatch(BaseModel):
     version: int = Field(ge=1)
 
 
+class OrganizePreflightRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    keepBackup: bool = False
+
+
 class PreflightExecuteRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
