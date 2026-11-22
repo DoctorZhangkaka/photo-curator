@@ -83,6 +83,8 @@ test("旅行相册核心链路：浏览、精选导出、两阶段清理与撤�
   await expect(page.getByTestId("cleanup-undo")).toBeVisible({ timeout: 30_000 });
   await expect.poll(() => fs.existsSync(pairJpg), { timeout: 8_000 }).toBe(false);
   await expect.poll(() => fs.existsSync(pairRaw), { timeout: 8_000 }).toBe(false);
+  // 当前照片被清理后，应落到原位置的下一位，而不是回到第一张。
+  await expect(page.getByTestId("photo-counter")).toHaveText(/3\s*\/\s*4/);
   await page.getByTestId("cleanup-undo").click();
   await expect.poll(() => fs.existsSync(pairJpg), { timeout: 20_000 }).toBe(true);
   await expect.poll(() => fs.existsSync(pairRaw), { timeout: 20_000 }).toBe(true);
