@@ -14,7 +14,7 @@
 | 大相册性能 | `.venv/bin/python -m pytest tests/performance -q -s` | **1 passed**：扫描 1000 张逻辑照片 **0.71s**，首屏 200 张 **0.010s**，遍历全部 5 页 **0.04s** |
 | 前端类型检查 | `npm run typecheck` | **通过**（TypeScript strict，`tsc -b`） |
 | 前端单元/交互测试 | `npm test` | **17 passed**（Vitest 5.1.1，3 个测试文件） |
-| 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 511.05 kB（gzip 152.14 kB），CSS 48.63 kB（gzip 9.13 kB） |
+| 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 511.29 kB（gzip 152.25 kB），CSS 48.84 kB（gzip 9.18 kB） |
 | 依赖安全审计 | `npm audit` | **0 vulnerabilities** |
 | GitHub Actions（macOS） | 全部 PR 与 `main` | **通过**（后端测试、类型检查、Vitest、生产构建） |
 | Playwright 端到端 | `npm run test:e2e` | **2 passed**，11.6s；含默认适应视图与清理缩略图悬浮预览，使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
@@ -89,6 +89,11 @@
 - `src/pages/CullerPage.test.tsx`（12 个）：按 F 精选、X/Delete 只改状态且不移动文件、输入框/select 聚焦时快捷键不触发、自动播放暂停、方向键/胶片栏边界、排序/过滤保留当前照片与回退首张、进入相册/切换照片后默认为适应视图、大图加载成功后才标记已浏览、409 `STALE_VERSION` 刷新重试、虚拟化胶片栏只挂载子集、弹窗焦点约束/Esc、清理预检阻止项、清理缩略图悬浮预览、清理成功 + 严重错误 + 组统计 + 撤销、UUID 幂等键。
 - `src/components/culler/Filmstrip.test.tsx`（2 个）：左右翻批按钮存在与禁用状态、点击右翻按视口宽度滚动（不是只移动一张）。
 - `src/components/ui/Modal.test.tsx`（3 个）：焦点陷阱、Esc 关闭、关闭后焦点恢复。
+
+0.3.1 全屏操作尺寸：
+
+- 全屏沉浸模式下操作按钮从 `sm`（28px 高）增大到 `lg`（40px 高）；左右翻页箭头同步放大，工具条间距增加。
+- 普通窗口尺寸不变；E2E 增加“全屏按钮高度大于普通视图”的断言。
 
 0.3.0 暗房主题：
 
