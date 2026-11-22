@@ -27,6 +27,9 @@ test("旅行相册核心链路：浏览、精选导出、两阶段清理与撤�
   await expect(
     page.locator("[data-viewport]").getByText("已浏览", { exact: true }),
   ).toBeVisible({ timeout: 15_000 });
+  // 默认进入相册应为“适应”，而不是 100%。
+  await expect(page.getByTestId("fit-button")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("actual-size-button")).toHaveAttribute("aria-pressed", "false");
 
   // F 精选第一张；方向键切换后精选第二张。
   await page.keyboard.press("f");
@@ -72,6 +75,10 @@ test("旅行相册核心链路：浏览、精选导出、两阶段清理与撤�
   await expect(cleanupModal).toBeVisible();
   await expect(cleanupModal).toContainText("不会永久删除");
   await expect(cleanupModal).toContainText("确认移入废纸篓");
+  const cleanupThumb = page.getByTestId("cleanup-thumbnail").first();
+  await expect(cleanupThumb).toBeVisible();
+  await cleanupThumb.hover();
+  await expect(page.getByTestId("cleanup-thumbnail-preview").first()).toBeVisible({ timeout: 15_000 });
   await page.getByTestId("cleanup-confirm").click();
   await expect(page.getByTestId("cleanup-undo")).toBeVisible({ timeout: 30_000 });
   await expect.poll(() => fs.existsSync(pairJpg), { timeout: 8_000 }).toBe(false);
