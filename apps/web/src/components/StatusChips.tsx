@@ -40,13 +40,14 @@ import { cx } from "../lib/cx";
 
 export type ChipTone = "neutral" | "accent" | "success" | "danger" | "warning" | "info";
 
+// 暗房校准低眩光色阶：确保徽标清晰可辨而不干扰照片色彩判断
 const TONE_CLASSES: Record<ChipTone, string> = {
-  neutral: "border-white/10 bg-white/[0.04] text-ink-300",
-  accent: "border-accent-500/30 bg-accent-500/10 text-accent-400",
-  success: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-  danger: "border-red-500/25 bg-red-500/10 text-red-300",
-  warning: "border-amber-500/25 bg-amber-500/10 text-amber-300",
-  info: "border-sky-500/25 bg-sky-500/10 text-sky-300",
+  neutral: "border-white/[0.09] bg-ink-900/75 text-ink-300",
+  accent: "border-accent-400/35 bg-accent-500/[0.14] text-accent-300",
+  success: "border-emerald-400/25 bg-emerald-500/[0.11] text-emerald-300",
+  danger: "border-red-400/30 bg-red-500/[0.13] text-red-300",
+  warning: "border-amber-400/30 bg-amber-500/[0.12] text-amber-300",
+  info: "border-sky-400/25 bg-sky-500/[0.11] text-sky-300",
 };
 
 interface ChipProps {
@@ -62,13 +63,13 @@ export function StatusChip({ icon: Icon, iconClassName, tone = "neutral", childr
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-4",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-[4px] border px-1.5 py-[2px] text-[10px] font-medium tracking-[0.01em] leading-4",
         TONE_CLASSES[tone],
         className,
       )}
       title={title}
     >
-      {Icon ? <Icon className={cx("h-3 w-3 shrink-0", iconClassName)} aria-hidden="true" /> : null}
+      {Icon ? <Icon className={cx("h-2.5 w-2.5 shrink-0", iconClassName)} aria-hidden="true" /> : null}
       {children}
     </span>
   );
@@ -89,7 +90,7 @@ export function ViewedChip({ status }: { status: ViewedStatus }) {
 export function SelectionChip({ status }: { status: SelectionStatus }) {
   if (status === "selected") {
     return (
-      <StatusChip icon={Star} tone="accent">
+      <StatusChip icon={Star} iconClassName="fill-current" tone="accent">
         {SELECTION_LABELS.selected}
       </StatusChip>
     );
@@ -118,7 +119,7 @@ export function FormChip({ form }: { form: FormKind | null }) {
   if (!form) return <StatusChip tone="neutral">无文件</StatusChip>;
   const Icon = FORM_ICONS[form];
   return (
-    <StatusChip icon={Icon} tone="info">
+    <StatusChip icon={Icon} tone="info" className="font-mono">
       {FORM_LABELS[form]}
     </StatusChip>
   );
@@ -196,7 +197,7 @@ export function ScanStatusChip({ status }: { status: ScanStatus }) {
       tone={SCAN_TONES[status]}
     >
       {SCAN_LABELS[status]}
-      {status === "scanning" ? <span className="sr-only">（正在读取文件）</span> : null}
+      {status === "scanning" ? <span className="sr-only"> (正在读取文件) </span> : null}
     </StatusChip>
   );
 }

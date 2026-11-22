@@ -6,7 +6,7 @@ import {
   FolderOpen,
   Images,
   RefreshCw,
-  ChevronRight,
+  ArrowUpRight,
   ShieldAlert,
   Star,
   Trash2,
@@ -47,7 +47,7 @@ function AlbumCard({
 
   return (
     <article
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-ink-900 transition-colors hover:border-white/20 hover:bg-ink-850 focus-within:border-accent-500/50"
+      className="group relative flex flex-col overflow-hidden rounded-[10px] border border-white/[0.08] bg-ink-900 shadow-darkroom-card transition-all duration-200 hover:border-white/[0.18] hover:bg-ink-850/90 focus-within:border-accent-500/55"
       data-testid="album-card"
       data-album-name={album.name}
     >
@@ -55,107 +55,151 @@ function AlbumCard({
         to={`/albums/${encodeURIComponent(album.id)}`}
         aria-label={`打开相册 ${album.name}`}
         onClick={onOpen}
-        className="absolute inset-0 z-10 rounded-xl"
+        className="absolute inset-0 z-10 rounded-[10px]"
       >
         <span className="sr-only">打开相册 {album.name}</span>
       </Link>
 
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-ink-950">
+      {/* 暗房灯箱封面视窗 */}
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#060607]">
         {album.coverThumbnailUrl && !coverFailed ? (
           <img
             src={appendMediaParam(album.coverThumbnailUrl, "updated", album.updatedAt)}
             alt={`相册封面：${album.name}`}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]"
             onError={() => setCoverFailed(true)}
           />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.06),transparent_60%)] text-ink-600">
+          <div className="darkroom-stage flex h-full w-full flex-col items-center justify-center gap-2 text-ink-600">
             {album.scanStatus === "failed" ? (
-              <AlertCircle className="h-7 w-7 text-red-400/70" aria-hidden="true" />
+              <AlertCircle className="h-6 w-6 text-red-400/75" aria-hidden="true" />
             ) : (
-              <Images className="h-7 w-7" aria-hidden="true" />
+              <Images className="h-6 w-6 text-ink-600" aria-hidden="true" />
             )}
-            <span className="text-[10px]">{album.counts.total === 0 ? "暂无照片" : "暂无封面"}</span>
+            <span className="font-mono text-[10px] tracking-[0.06em] text-ink-500">
+              {album.counts.total === 0 ? "EMPTY ROLL" : "NO PREVIEW"}
+            </span>
           </div>
         )}
+
+        {/* 取景器悬浮角标 */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-2 z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+        >
+          <span className="absolute left-0 top-0 h-2.5 w-2.5 border-l border-t border-white/35" />
+          <span className="absolute right-0 top-0 h-2.5 w-2.5 border-r border-t border-white/35" />
+          <span className="absolute bottom-0 left-0 h-2.5 w-2.5 border-b border-l border-white/35" />
+          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 border-b border-r border-white/35" />
+        </div>
+
+        {/* 顶部状态徽标 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-2.5">
-          <ScanStatusChip status={album.scanStatus} />
+          <span className="backdrop-blur-md">
+            <ScanStatusChip status={album.scanStatus} />
+          </span>
           {issueCount > 0 ? (
-            <StatusChip icon={ShieldAlert} tone="warning" className="bg-ink-950/80 backdrop-blur-sm">
+            <StatusChip icon={ShieldAlert} tone="warning" className="bg-ink-950/80 backdrop-blur-md">
               {issueCount} 项异常
             </StatusChip>
           ) : null}
         </div>
+
+        {/* 底部暗角信息层 + 嵌入式微进度轨 */}
         {album.counts.total > 0 ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent px-2.5 pb-2 pt-8">
-            <span className="font-mono text-[10px] tabular-nums text-ink-200">
-              已浏览 {album.counts.viewed} / {album.counts.total}
-            </span>
-            <span className="font-mono text-[10px] tabular-nums text-accent-400">{progress}%</span>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/85 via-black/35 to-transparent px-3 pb-2.5 pt-10">
+            <div className="flex items-end justify-between gap-2">
+              <span className="font-mono text-[10px] tabular-nums tracking-[0.02em] text-ink-200/90">
+                已浏览 {album.counts.viewed} / {album.counts.total}
+              </span>
+              <span className="font-mono text-[10px] font-medium tabular-nums text-accent-300">{progress}%</span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label={`${album.name} 浏览进度`}
+              aria-valuemin={0}
+              aria-valuemax={album.counts.total}
+              aria-valuenow={album.counts.viewed}
+              className="mt-1.5 h-[2px] w-full overflow-hidden rounded-full bg-white/[0.14]"
+            >
+              <div
+                className="h-full rounded-full bg-accent-400 transition-[width] duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
         ) : null}
       </div>
 
+      {/* 卡片下半部：相册元数据与暗房计数条 */}
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-3.5">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="min-w-0 truncate text-sm font-semibold tracking-tight text-ink-100" title={album.name}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3
+            className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.01em] text-ink-100 transition-colors group-hover:text-white"
+            title={album.name}
+          >
             {album.name}
           </h3>
-          <span className="shrink-0 text-[10px] text-ink-500">{formatRelativeTime(album.lastScannedAt)}</span>
+          <span className="shrink-0 font-mono text-[10px] text-ink-500">
+            {formatRelativeTime(album.lastScannedAt)}
+          </span>
         </div>
 
-        {album.counts.total > 0 ? (
-          <div
-            role="progressbar"
-            aria-label={`${album.name} 浏览进度`}
-            aria-valuemin={0}
-            aria-valuemax={album.counts.total}
-            aria-valuenow={album.counts.viewed}
-            className="h-1 w-full overflow-hidden rounded-full bg-white/[0.06]"
-          >
-            <div className="h-full rounded-full bg-accent-500/80" style={{ width: `${progress}%` }} />
+        {/* 一体化光学数据条（用细发丝分隔替代散碎嵌套框） */}
+        <dl className="grid grid-cols-4 divide-x divide-white/[0.06] rounded-md border border-white/[0.06] bg-ink-950/60 py-1.5 text-center">
+          <div className="px-1">
+            <dt className="text-[9px] uppercase tracking-[0.06em] text-ink-500">照片</dt>
+            <dd className="mt-0.5 font-mono text-xs font-medium tabular-nums text-ink-100">{album.counts.total}</dd>
           </div>
-        ) : null}
-
-        <dl className="grid grid-cols-4 gap-1.5 text-center">
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-1 py-1.5">
-            <dt className="text-[9px] text-ink-500">照片</dt>
-            <dd className="font-mono text-xs tabular-nums text-ink-100">{album.counts.total}</dd>
-          </div>
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-1 py-1.5">
-            <dt className="flex items-center justify-center gap-0.5 text-[9px] text-ink-500">
+          <div className="px-1">
+            <dt className="flex items-center justify-center gap-0.5 text-[9px] uppercase tracking-[0.06em] text-ink-500">
               <Star className="h-2.5 w-2.5 text-accent-400" aria-hidden="true" /> 精选
             </dt>
-            <dd className={cx("font-mono text-xs tabular-nums", album.counts.selected > 0 ? "text-accent-300" : "text-ink-300")}>
+            <dd
+              className={cx(
+                "mt-0.5 font-mono text-xs font-medium tabular-nums",
+                album.counts.selected > 0 ? "text-accent-300" : "text-ink-400",
+              )}
+            >
               {album.counts.selected}
             </dd>
           </div>
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-1 py-1.5">
-            <dt className="flex items-center justify-center gap-0.5 text-[9px] text-ink-500">
-              <Trash2 className="h-2.5 w-2.5 text-red-300" aria-hidden="true" /> 待删
+          <div className="px-1">
+            <dt className="flex items-center justify-center gap-0.5 text-[9px] uppercase tracking-[0.06em] text-ink-500">
+              <Trash2 className="h-2.5 w-2.5 text-red-400/80" aria-hidden="true" /> 待删
             </dt>
-            <dd className={cx("font-mono text-xs tabular-nums", album.counts.pendingDelete > 0 ? "text-red-300" : "text-ink-300")}>
+            <dd
+              className={cx(
+                "mt-0.5 font-mono text-xs font-medium tabular-nums",
+                album.counts.pendingDelete > 0 ? "text-red-300" : "text-ink-400",
+              )}
+            >
               {album.counts.pendingDelete}
             </dd>
           </div>
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-1 py-1.5">
-            <dt className="text-[9px] text-ink-500">缺失/冲突</dt>
-            <dd className={cx("font-mono text-xs tabular-nums", issueCount > 0 ? "text-amber-300" : "text-ink-300")}>
-              {album.counts.missing} / {album.counts.conflicts}
+          <div className="px-1">
+            <dt className="text-[9px] uppercase tracking-[0.06em] text-ink-500">缺失/冲突</dt>
+            <dd
+              className={cx(
+                "mt-0.5 font-mono text-xs font-medium tabular-nums",
+                issueCount > 0 ? "text-amber-300" : "text-ink-400",
+              )}
+            >
+              {album.counts.missing}/{album.counts.conflicts}
             </dd>
           </div>
         </dl>
 
         {album.scanStatus === "failed" && album.scanError ? (
-          <div className="flex items-start gap-2 rounded-lg border border-red-500/25 bg-red-500/[0.05] px-2.5 py-2">
+          <div className="flex items-start gap-2 rounded-md border border-red-400/25 bg-red-500/[0.06] px-2.5 py-2">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-400" aria-hidden="true" />
             <p className="line-clamp-2 min-w-0 flex-1 text-[10px] leading-relaxed text-red-200">{album.scanError}</p>
             <button
               type="button"
               data-testid="album-retry"
-              className="relative z-20 shrink-0 rounded border border-red-500/30 px-1.5 py-0.5 text-[10px] text-red-200 hover:bg-red-500/15 disabled:opacity-50"
+              className="relative z-20 shrink-0 rounded border border-red-400/35 px-1.5 py-0.5 text-[10px] font-medium text-red-200 transition-colors hover:bg-red-500/20 disabled:opacity-50"
               disabled={retrying}
               onClick={(event) => {
                 event.preventDefault();
@@ -169,12 +213,12 @@ function AlbumCard({
         ) : null}
 
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[0.05] pt-2.5">
-          <span className="truncate font-mono text-[10px] text-ink-600" title={album.relativePath}>
+          <span className="truncate font-mono text-[10px] text-ink-500" title={album.relativePath}>
             {album.relativePath}
           </span>
-          <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-ink-500 group-hover:text-accent-400">
-            打开
-            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-ink-500 transition-colors group-hover:text-accent-300">
+            进入暗房
+            <ArrowUpRight className="h-3 w-3 transition-transform duration-150 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
           </span>
         </div>
       </div>
@@ -275,18 +319,19 @@ export default function LibraryPage() {
 
   return (
     <div data-testid="library-page" className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* 暗房目录页眉 */}
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.06] pb-5">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-500">
-            <FolderOpen className="h-3 w-3" aria-hidden="true" /> 本地照片
+          <p className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-accent-400/85">
+            <FolderOpen className="h-3 w-3" aria-hidden="true" /> LOCAL CATALOG
           </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-100 sm:text-3xl">相册库</h1>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-ink-100 sm:text-[28px]">相册库</h1>
           <p className="mt-1.5 text-xs leading-relaxed text-ink-400">
-            按文件夹管理拍摄相册，RAW＋JPG 自动配对成一张逻辑照片。
+            按文件夹管理拍摄相册，RAW+JPG 自动配对成一张逻辑照片。
             {data?.photoRoot ? (
               <>
                 {" "}
-                照片根目录：<span className="break-all font-mono text-[11px] text-ink-300">{data.photoRoot}</span>
+                根目录：<span className="break-all font-mono text-[11px] text-ink-300">{data.photoRoot}</span>
               </>
             ) : null}
             {data?.exportDirName ? (
@@ -316,49 +361,53 @@ export default function LibraryPage() {
         </div>
       </div>
 
+      {/* 暗房全局统计遥测条 */}
       {data && albums.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-white/[0.06] bg-white/[0.015] px-3.5 py-2 text-[11px] text-ink-400">
-          <span>
-            <span className="font-mono tabular-nums text-ink-200">{albums.length}</span> 个相册
-          </span>
-          <span className="text-ink-700">·</span>
-          <span>
-            <span className="font-mono tabular-nums text-ink-200">{totals.photos}</span> 张照片
-          </span>
-          <span className="text-ink-700">·</span>
-          <span className="text-accent-400/90">
-            <span className="font-mono tabular-nums">{totals.selected}</span> 精选
-          </span>
-          <span className="text-ink-700">·</span>
-          <span className={totals.pending > 0 ? "text-red-300" : undefined}>
-            <span className="font-mono tabular-nums">{totals.pending}</span> 待删除
-          </span>
-          <span className="text-ink-700">·</span>
-          <span className={totals.issues > 0 ? "text-amber-300" : undefined}>
-            <span className="font-mono tabular-nums">{totals.issues}</span> 项异常
-          </span>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-white/[0.07] bg-ink-900/80 px-4 py-2.5 text-[11px] text-ink-400 shadow-darkroom-control">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-mono text-sm font-semibold tabular-nums text-ink-100">{albums.length}</span>
+            <span className="text-ink-500">个相册</span>
+          </div>
+          <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-mono text-sm font-semibold tabular-nums text-ink-100">{totals.photos}</span>
+            <span className="text-ink-500">张逻辑照片</span>
+          </div>
+          <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-mono text-sm font-semibold tabular-nums text-accent-300">{totals.selected}</span>
+            <span className="text-accent-400/80">精选</span>
+          </div>
+          <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
+          <div className="flex items-baseline gap-1.5">
+            <span className={cx("font-mono text-sm font-semibold tabular-nums", totals.pending > 0 ? "text-red-300" : "text-ink-300")}>
+              {totals.pending}
+            </span>
+            <span className={totals.pending > 0 ? "text-red-300/80" : "text-ink-500"}>待删除</span>
+          </div>
+          <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
+          <div className="flex items-baseline gap-1.5">
+            <span className={cx("font-mono text-sm font-semibold tabular-nums", totals.issues > 0 ? "text-amber-300" : "text-ink-300")}>
+              {totals.issues}
+            </span>
+            <span className={totals.issues > 0 ? "text-amber-300/80" : "text-ink-500"}>项异常</span>
+          </div>
           {albumsQuery.isFetching ? (
-            <span className="ml-auto text-ink-500" role="status">
-              正在刷新列表…
+            <span className="ml-auto font-mono text-[10px] text-ink-500" role="status">
+              SYNCING…
             </span>
           ) : null}
         </div>
       ) : null}
 
       {albumsQuery.isPending ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="正在加载相册">
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-label="正在加载相册">
           {[0, 1, 2, 3, 4, 5].map((index) => (
-            <div key={index} className="overflow-hidden rounded-xl border border-white/[0.06] bg-ink-900">
+            <div key={index} className="overflow-hidden rounded-[10px] border border-white/[0.06] bg-ink-900">
               <Skeleton className="aspect-[16/10] w-full rounded-none" />
               <div className="space-y-3 p-3.5">
                 <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-1 w-full" />
-                <div className="grid grid-cols-4 gap-1.5">
-                  <Skeleton className="h-9" />
-                  <Skeleton className="h-9" />
-                  <Skeleton className="h-9" />
-                  <Skeleton className="h-9" />
-                </div>
+                <Skeleton className="h-11 w-full" />
                 <Skeleton className="h-3 w-1/2" />
               </div>
             </div>
@@ -404,7 +453,7 @@ export default function LibraryPage() {
           />
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {albums.map((album) => (
             <AlbumCard
               key={album.id}

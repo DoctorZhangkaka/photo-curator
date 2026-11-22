@@ -10,18 +10,25 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export function Select({ label, hideLabel = false, wrapperClassName, className, id, children, ...props }: SelectProps) {
   return (
-    <label className={cx("flex min-w-0 items-center gap-2", wrapperClassName)}>
-      <span className={cx("shrink-0 text-[11px] font-medium text-ink-400", hideLabel && "sr-only")}>{label}</span>
+    <label className={cx("flex min-w-0 items-center gap-1.5", wrapperClassName)}>
+      <span
+        className={cx(
+          "shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-ink-500",
+          hideLabel && "sr-only",
+        )}
+      >
+        {label}
+      </span>
       <span className="relative min-w-0">
         <select
           id={id}
-          className={cx("field h-8 w-full min-w-[92px] appearance-none py-0 pl-2.5 pr-7 text-xs", className)}
+          className={cx("field h-7 w-full min-w-[84px] appearance-none py-0 pl-2 pr-6 text-[11px] font-medium", className)}
           {...props}
         >
           {children}
         </select>
         <ChevronDown
-          className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
+          className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-ink-500"
           aria-hidden="true"
         />
       </span>
@@ -36,8 +43,8 @@ interface DateInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "ty
 export function DateInput({ label, className, id, ...props }: DateInputProps) {
   return (
     <label className="flex min-w-0 flex-col gap-1">
-      <span className="text-[11px] font-medium text-ink-400">{label}</span>
-      <input id={id} type="date" className={cx("field h-8 px-2.5 text-xs", className)} {...props} />
+      <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-500">{label}</span>
+      <input id={id} type="date" className={cx("field h-7 px-2 text-[11px]", className)} {...props} />
     </label>
   );
 }

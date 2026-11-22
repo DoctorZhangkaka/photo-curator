@@ -440,8 +440,8 @@ export default function CullerPage() {
   const viewerEmptyState =
     photosQuery.isPending && !photosQuery.data ? (
       <div className="w-full max-w-md space-y-3" aria-label="正在加载照片列表">
-        <Skeleton className="h-64 w-full" />
-        <Spinner label="正在读取照片列表…" />
+        <Skeleton className="h-64 w-full opacity-40" />
+        <Spinner label="正在读取照片列表..." />
       </div>
     ) : album?.scanStatus === "empty" || (album && album.counts.total === 0) ? (
       <EmptyState
@@ -453,7 +453,7 @@ export default function CullerPage() {
             重新扫描相册
           </Button>
         }
-        className="w-full max-w-lg border-white/10"
+        className="w-full max-w-lg border-white/[0.08]"
       />
     ) : (
       <EmptyState
@@ -465,7 +465,7 @@ export default function CullerPage() {
             重置筛选
           </Button>
         }
-        className="w-full max-w-lg border-white/10"
+        className="w-full max-w-lg border-white/[0.08]"
       />
     );
 
@@ -483,7 +483,7 @@ export default function CullerPage() {
   if (albumQuery.isError && !album) {
     return (
       <div data-testid="culler-page" className="flex h-full flex-col bg-ink-950">
-        <header className="flex items-center gap-2 border-b border-white/[0.07] px-3 py-2">
+        <header className="flex items-center gap-2 border-b border-white/[0.07] bg-ink-900 px-3 py-2">
           <Button variant="ghost" size="sm" icon={ArrowLeft} data-testid="back-button" onClick={() => navigate("/")}>
             相册库
           </Button>
@@ -498,7 +498,8 @@ export default function CullerPage() {
 
   return (
     <div data-testid="culler-page" className="flex h-full min-h-0 flex-col bg-ink-950">
-      <header className="z-20 shrink-0 border-b border-white/[0.07] bg-ink-900">
+      {/* 暗房工作台顶部控制栏 */}
+      <header className="z-20 shrink-0 border-b border-white/[0.08] bg-ink-900">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
           <Button
             variant="ghost"
@@ -506,25 +507,39 @@ export default function CullerPage() {
             icon={ArrowLeft}
             data-testid="back-button"
             onClick={() => navigate("/")}
+            className="text-ink-300"
           >
             相册库
           </Button>
+
+          <span className="hidden h-4 w-px bg-white/[0.08] sm:block" aria-hidden="true" />
+
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-sm font-semibold tracking-tight text-ink-100 sm:text-base">
+              <h1 className="truncate text-[13px] font-semibold tracking-[-0.01em] text-ink-100 sm:text-sm">
                 {album?.name ?? "加载相册…"}
               </h1>
               <ScanStatusChip status={scanStatus} />
-              {album?.lastScannedAt ? (
-                <span className="hidden text-[10px] text-ink-500 md:inline">最后扫描 {formatRelativeTime(album.lastScannedAt)}</span>
-              ) : null}
               {counts ? (
-                <span className="hidden font-mono text-[10px] tabular-nums text-ink-500 sm:inline">
-                  共 {counts.total} · 已浏览 {counts.viewed} · 精选 {counts.selected} · 待删除 {counts.pendingDelete}
+                <span className="hidden items-center gap-2 rounded border border-white/[0.06] bg-ink-950/70 px-2 py-0.5 font-mono text-[10px] tabular-nums text-ink-400 sm:inline-flex">
+                  <span>共 {counts.total}</span>
+                  <span className="text-ink-700">|</span>
+                  <span>已浏览 {counts.viewed}</span>
+                  <span className="text-ink-700">|</span>
+                  <span className={counts.selected > 0 ? "text-accent-300" : undefined}>精选 {counts.selected}</span>
+                  <span className="text-ink-700">|</span>
+                  <span className={counts.pendingDelete > 0 ? "text-red-300" : undefined}>
+                    待删除 {counts.pendingDelete}
+                  </span>
+                </span>
+              ) : null}
+              {album?.lastScannedAt ? (
+                <span className="hidden font-mono text-[10px] text-ink-500 xl:inline">
+                  扫描于 {formatRelativeTime(album.lastScannedAt)}
                 </span>
               ) : null}
             </div>
-            <p className="truncate text-[10px] text-ink-500">{album?.relativePath ?? albumId}</p>
+            <p className="mt-0.5 truncate font-mono text-[10px] text-ink-500">{album?.relativePath ?? albumId}</p>
             {scanFailed && album?.scanError ? (
               <p role="alert" className="mt-0.5 flex items-center gap-1 text-[10px] text-red-300">
                 <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -532,6 +547,7 @@ export default function CullerPage() {
               </p>
             ) : null}
           </div>
+
           <div className="order-last flex w-full flex-wrap items-center justify-end gap-1.5 border-t border-white/[0.05] pt-1.5 sm:order-none sm:w-auto sm:border-0 sm:pt-0">
             <Button
               variant="ghost"
@@ -554,6 +570,7 @@ export default function CullerPage() {
               disabled={backgroundScanning || rescanMutation.isPending}
               onClick={handleRescan}
             />
+            <span className="hidden h-4 w-px bg-white/[0.08] sm:block" aria-hidden="true" />
             <Button
               variant="secondary"
               size="sm"
@@ -561,13 +578,18 @@ export default function CullerPage() {
               data-testid="export-button"
               disabled={selectedCount === 0}
               title={selectedCount === 0 ? "当前没有精选照片" : "导出精选照片到固定精选目录"}
+              className={selectedCount > 0 ? "border-accent-400/35 text-accent-200 hover:border-accent-400/55" : undefined}
               onClick={() => {
                 pauseForAction();
                 setExportOpen(true);
               }}
             >
               导出精选
-              {selectedCount > 0 ? <span className="font-mono text-[10px] opacity-70">{selectedCount}</span> : null}
+              {selectedCount > 0 ? (
+                <span className="rounded bg-accent-500/20 px-1 font-mono text-[10px] tabular-nums text-accent-300">
+                  {selectedCount}
+                </span>
+              ) : null}
             </Button>
             <Button
               variant="danger"
@@ -582,11 +604,17 @@ export default function CullerPage() {
               }}
             >
               清理待删除
-              {pendingCount > 0 ? <span className="font-mono text-[10px] opacity-70">{pendingCount}</span> : null}
+              {pendingCount > 0 ? (
+                <span className="rounded bg-red-500/20 px-1 font-mono text-[10px] tabular-nums text-red-200">
+                  {pendingCount}
+                </span>
+              ) : null}
             </Button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-white/[0.05] px-3 py-1.5">
+
+        {/* 暗房内凹式筛选子栏 */}
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 border-t border-white/[0.06] bg-ink-950/75 px-3 py-1.5">
           <Select
             label="排序"
             data-testid="culler-sort"
@@ -596,7 +624,7 @@ export default function CullerPage() {
             <option value="capture">拍摄时间</option>
             <option value="filename">文件名</option>
           </Select>
-          <span className="hidden h-4 w-px bg-white/10 sm:block" />
+          <span className="hidden h-3.5 w-px bg-white/[0.08] sm:block" aria-hidden="true" />
           <Select
             label="浏览"
             data-testid="filter-viewed"
@@ -625,7 +653,7 @@ export default function CullerPage() {
             onChange={(event) => updateFilter("form", event.target.value as FormFilter)}
           >
             <option value="all">全部</option>
-            <option value="jpg_raw">JPG＋RAW</option>
+            <option value="jpg_raw">JPG+RAW</option>
             <option value="jpg_only">仅 JPG</option>
             <option value="raw_only">仅 RAW</option>
           </Select>
@@ -644,7 +672,7 @@ export default function CullerPage() {
             <button
               type="button"
               onClick={resetFilters}
-              className="rounded px-1.5 py-1 text-[11px] text-accent-400 hover:bg-accent-500/10"
+              className="rounded border border-accent-400/30 bg-accent-500/10 px-2 py-0.5 text-[10px] font-medium text-accent-300 transition-colors hover:bg-accent-500/20"
             >
               重置筛选
             </button>
@@ -652,15 +680,17 @@ export default function CullerPage() {
           <div className="ml-auto flex items-center gap-3">
             {photosQuery.isFetching && !photosQuery.isFetchingNextPage ? (
               <span role="status" aria-label="正在刷新筛选结果">
-                <Loader2 className="h-3 w-3 animate-spin text-ink-500" aria-hidden="true" />
+                <Loader2 className="h-3 w-3 animate-spin text-accent-400" aria-hidden="true" />
               </span>
             ) : null}
-            <span className="font-mono text-[10px] tabular-nums text-ink-500">筛选结果 {total} 张</span>
+            <span className="font-mono text-[10px] tabular-nums text-ink-500">
+              筛选结果 <span className="text-ink-200">{total}</span> 张
+            </span>
             {!infoOpen && current ? (
               <button
                 type="button"
                 onClick={toggleInfo}
-                className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-ink-400 hover:bg-white/[0.06] hover:text-ink-100"
+                className="inline-flex items-center gap-1 rounded border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-ink-300 transition-colors hover:border-white/[0.16] hover:bg-white/[0.07] hover:text-ink-100"
               >
                 <PanelRightOpen className="h-3 w-3" aria-hidden="true" /> 信息
               </button>
@@ -726,7 +756,7 @@ export default function CullerPage() {
             <button
               type="button"
               aria-label="关闭照片信息"
-              className="absolute inset-0 z-20 bg-black/30 lg:hidden"
+              className="absolute inset-0 z-20 bg-black/45 backdrop-blur-[1px] lg:hidden"
               onClick={toggleInfo}
             />
             <InfoPanel
@@ -755,8 +785,6 @@ export default function CullerPage() {
           </>
         ) : null}
       </div>
-
-
 
       <CleanupDialog
         open={cleanupOpen}
