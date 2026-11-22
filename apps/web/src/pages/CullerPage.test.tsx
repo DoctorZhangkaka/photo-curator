@@ -519,7 +519,42 @@ describe("CullerPage 导航与筛选", () => {
     await screen.findByAltText("大图：DSCF0001");
   });
 
-  it("切换排序保留当前照片；筛选后照片消失则回到第一张", async () => {
+  it("标记待删除后筛选刷新，继续停留在原位置的下一位", async () => {
+    photos = [
+      makePhoto("p1", "DSCF0001"),
+      makePhoto("p2", "DSCF0002"),
+      makePhoto("p3", "DSCF0003"),
+    ];
+    album = makeAlbum({
+      counts: { total: 3, viewed: 0, unseen: 3, selected: 0, pendingDelete: 0, missing: 0, conflicts: 0 },
+    });
+    apiMock.getAlbum.mockResolvedValue({ album, photoRoot: "/tmp/pc-ui", exportDirName: "精选原相册" });
+    renderCuller();
+    await waitForFirstPhoto();
+    fireEvent.click(screen.getByRole("button", { name: "下一张" }));
+    await screen.findByAltText("大图：DSCF0002");
+
+    fireEvent.click(screen.getByTestId("pending-delete-button"));
+    await waitFor(() =>
+      expect(apiMock.patchPhotoState).toHaveBeenCalledWith(
+        "p2",
+        expect.objectContaining({ selectionStatus: "pending_delete" }),
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId("filter-selection"), { target: { value: "unmarked" } });
+    await waitFor(() =>
+      expect(apiMock.listPhotos).toHaveBeenLastCalledWith(
+        "a1",
+        expect.objectContaining({ selection: "unmarked" }),
+      ),
+    );
+    await screen.findByAltText("大图：DSCF0003");
+    expect(screen.getByTestId("photo-counter")).toHaveTextContent(/2\s*\/\s*2/);
+    expect(screen.queryByAltText("大图：DSCF0001")).not.toBeInTheDocument();
+  });
+
+  it("切换排序保留当前照片；筛选后照片消失则落到相邻位置", async () => {
     renderCuller();
     await waitForFirstPhoto();
     fireEvent.click(screen.getByRole("button", { name: "下一张" }));

@@ -67,6 +67,7 @@ export default function CullerPage() {
 
   const defaultsApplied = useRef(false);
   const rescanStartedFor = useRef<string | null>(null);
+  const lastIndexRef = useRef<{ albumId: string; index: number }>({ albumId: "", index: 0 });
 
   const albumQuery = useAlbum(albumId);
   const album = albumQuery.data?.album ?? null;
@@ -77,7 +78,12 @@ export default function CullerPage() {
   const total = pages?.[0]?.total ?? album?.counts.total ?? 0;
 
   const foundIndex = currentPhotoId ? photos.findIndex((photo) => photo.id === currentPhotoId) : -1;
-  const currentIndex = foundIndex >= 0 ? foundIndex : photos.length > 0 ? 0 : -1;
+  // 当前照片从列表消失（清理、筛选或标记后刷新）时，记住它原来所在的位置，
+  // 落到同一位置的下一位；不要在加载下一页/清除项时跳回第一张。
+  const rememberedIndex =
+    lastIndexRef.current.albumId === (albumId ?? "") ? lastIndexRef.current.index : 0;
+  const fallbackIndex = photos.length > 0 ? Math.min(rememberedIndex, photos.length - 1) : -1;
+  const currentIndex = foundIndex >= 0 ? foundIndex : fallbackIndex;
   const current = currentIndex >= 0 ? (photos[currentIndex] ?? null) : null;
 
   const detailQuery = usePhotoDetail(current?.id);
@@ -106,6 +112,7 @@ export default function CullerPage() {
   }, [settingsLoaded, settings.defaultSort, settings.autoplayInterval]);
 
   useEffect(() => {
+    lastIndexRef.current = { albumId: albumId ?? "", index: 0 };
     setCurrentPhotoId(null);
     setConflictAssetId(null);
     setPlaying(false);
@@ -121,14 +128,26 @@ export default function CullerPage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // 保持当前照片；若新排序/筛选结果中已不存在，则回到第一张。
+  useEffect(() => {
+    if (foundIndex < 0) return;
+    lastIndexRef.current = { albumId: albumId ?? "", index: foundIndex };
+  }, [foundIndex, albumId]);
+
+  // 保持当前照片；若新排序/筛选/清理结果中已不存在，优先落到原位置的下一位。
   useEffect(() => {
     if (!photosQuery.isSuccess || photosQuery.isPlaceholderData) return;
     if (photos.length === 0) return;
     if (!currentPhotoId || !photos.some((photo) => photo.id === currentPhotoId)) {
-      setCurrentPhotoId(photos[0].id);
+      const target = photos[Math.min(Math.max(rememberedIndex, 0), photos.length - 1)];
+      if (target) setCurrentPhotoId(target.id);
     }
-  }, [photos, currentPhotoId, photosQuery.isSuccess, photosQuery.isPlaceholderData]);
+  }, [
+    photos,
+    currentPhotoId,
+    photosQuery.isSuccess,
+    photosQuery.isPlaceholderData,
+    rememberedIndex,
+  ]);
 
   useEffect(() => {
     setConflictAssetId(null);
