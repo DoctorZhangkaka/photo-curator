@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { AlertTriangle, FileX, ImageOff, Loader2, Star, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, FileX, ImageOff, Loader2, Star, Trash2 } from "lucide-react";
 import type { Photo } from "../../lib/api";
 import { SELECTION_LABELS, VIEWED_LABELS } from "../../lib/labels";
 import { cx } from "../../lib/cx";
@@ -12,7 +12,7 @@ interface FilmstripProps {
   onSelect: (index: number) => void;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
-  onLoadMore: () => void;
+  onLoadMore: () => Promise<void> | void;
 }
 
 const ITEM_SIZE = 102;
@@ -27,6 +27,9 @@ export function Filmstrip({
   onLoadMore,
 }: FilmstripProps) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false);
   const virtualizer = useVirtualizer({
     count: photos.length,
     getScrollElement: () => parentRef.current,
@@ -37,12 +40,62 @@ export function Filmstrip({
     initialRect: { width: 1400, height: 100 },
   });
 
+  const updateScrollState = useCallback(() => {
+    const element = parentRef.current;
+    if (!element) return;
+    setAtStart(element.scrollLeft <= 4);
+    setAtEnd(element.scrollLeft + element.clientWidth >= element.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const element = parentRef.current;
+    if (!element) return;
+    element.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(updateScrollState);
+      observer.observe(element);
+    }
+    return () => {
+      element.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+      observer?.disconnect();
+    };
+  }, [updateScrollState]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(updateScrollState);
+    return () => window.cancelAnimationFrame(frame);
+  }, [photos.length, updateScrollState]);
+
+  // 只在当前照片变化时居中；加载下一批缩略图不应该把视口拉回当前照片。
   useEffect(() => {
     if (photos.length === 0) return;
     const target = Math.min(Math.max(currentIndex, 0), photos.length - 1);
     virtualizer.scrollToIndex(target, { align: "center" });
-  }, [currentIndex, photos.length, virtualizer]);
+  }, [currentIndex, virtualizer]);
 
+  async function scrollBatch(direction: 1 | -1) {
+    const element = parentRef.current;
+    if (!element || batchLoading) return;
+    const amount = Math.max(ITEM_SIZE * 4, Math.floor(element.clientWidth * 0.8));
+    const nearEnd = element.scrollLeft + element.clientWidth >= element.scrollWidth - 8;
+    setBatchLoading(true);
+    try {
+      if (direction > 0 && nearEnd && hasNextPage && !isFetchingNextPage) {
+        await onLoadMore();
+        await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      }
+      element.scrollBy({ left: amount * direction, behavior: "smooth" });
+    } finally {
+      setBatchLoading(false);
+      window.setTimeout(updateScrollState, 0);
+    }
+  }
+
+  const canPreviousBatch = !atStart;
+  const canNextBatch = !atEnd || hasNextPage;
   const virtualItems = virtualizer.getVirtualItems();
 
   return (
@@ -51,28 +104,53 @@ export function Filmstrip({
         <span className="tabular-nums">
           胶片栏 · 已载入 {photos.length} / {total} 张
         </span>
-        {hasNextPage ? (
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-ink-300 hover:bg-white/[0.06] hover:text-ink-100 disabled:opacity-50"
-            onClick={onLoadMore}
-            disabled={isFetchingNextPage}
-          >
-            {isFetchingNextPage ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
-            {isFetchingNextPage ? "载入中…" : "加载更多"}
-          </button>
-        ) : (
-          <span>全部照片已载入</span>
-        )}
+        <div className="flex items-center gap-2">
+          {hasNextPage ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-ink-300 hover:bg-white/[0.06] hover:text-ink-100 disabled:opacity-50"
+              onClick={() => void onLoadMore()}
+              disabled={isFetchingNextPage}
+            >
+              {isFetchingNextPage ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
+              {isFetchingNextPage ? "载入中…" : "加载更多"}
+            </button>
+          ) : (
+            <span>全部照片已载入</span>
+          )}
+        </div>
       </div>
-      <div
-        ref={parentRef}
-        data-testid="filmstrip"
-        role="listbox"
-        aria-label="照片胶片栏"
-        aria-orientation="horizontal"
-        className="no-scrollbar h-[88px] overflow-x-auto overflow-y-hidden px-2 sm:h-[100px]"
-      >
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="上一批缩略图"
+          title="向左翻一批缩略图"
+          data-testid="filmstrip-prev-batch"
+          disabled={!canPreviousBatch || batchLoading}
+          onClick={() => void scrollBatch(-1)}
+          className="absolute left-1 top-1/2 z-20 flex h-16 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ink-950/80 text-ink-300 shadow-lg backdrop-blur-sm transition-colors hover:bg-ink-800 hover:text-white disabled:pointer-events-none disabled:opacity-20"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label="下一批缩略图"
+          title="向右翻一批缩略图"
+          data-testid="filmstrip-next-batch"
+          disabled={!canNextBatch || batchLoading}
+          onClick={() => void scrollBatch(1)}
+          className="absolute right-1 top-1/2 z-20 flex h-16 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ink-950/80 text-ink-300 shadow-lg backdrop-blur-sm transition-colors hover:bg-ink-800 hover:text-white disabled:pointer-events-none disabled:opacity-20"
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <div
+          ref={parentRef}
+          data-testid="filmstrip"
+          role="listbox"
+          aria-label="照片胶片栏"
+          aria-orientation="horizontal"
+          className="no-scrollbar h-[88px] overflow-x-auto overflow-y-hidden px-2 sm:h-[100px]"
+        >
         <div className="relative h-full" style={{ width: `${virtualizer.getTotalSize()}px` }}>
           {virtualItems.map((virtualItem) => {
             const photo = photos[virtualItem.index];
@@ -166,6 +244,7 @@ export function Filmstrip({
               </div>
             );
           })}
+        </div>
         </div>
       </div>
     </section>
