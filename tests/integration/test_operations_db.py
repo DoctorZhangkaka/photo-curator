@@ -170,7 +170,9 @@ def test_health_reports_dependencies(open_client, tmp_path):
     assert health["dependencies"]["rawpy"]["available"] is True
     assert "exiftool" in health["dependencies"]
     assert "trash" in health["dependencies"]
-    assert health["version"] == "0.1.0"
+    from photo_curator import __version__
+
+    assert health["version"] == __version__
     assert client.get("/api/config").json()["exportDirName"] == "精选原相册"
     assert client.get("/api/session").json()["token"] == health_session_token(client)
 

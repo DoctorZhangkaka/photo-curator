@@ -154,15 +154,21 @@ export function PhotoViewer({
       })()
     : "";
 
-  const fitScale =
+  const rawFitScale =
     naturalSize.width > 0 && naturalSize.height > 0 && viewportSize.width > 0 && viewportSize.height > 0
-      ? Math.min(
-          viewportSize.width / naturalSize.width,
-          viewportSize.height / naturalSize.height,
-          1,
-        )
+      ? Math.min(viewportSize.width / naturalSize.width, viewportSize.height / naturalSize.height)
       : 0;
+  // CSS 的 max-width/max-height 已经把大图缩小到可视区域；fitScale 用于把
+  // “相对布局尺寸”的 zoom 换算成显示百分比。小图（尤其高分辨率屏幕上较小的
+  // 预览）需要显式放大到适应屏幕，因此 fitZoom 允许大于 1。
+  const fitScale = rawFitScale > 0 ? Math.min(rawFitScale, 1) : 0;
+  const fitZoom = rawFitScale > 1 ? rawFitScale : 1;
   const zoomPercent = fitScale > 0 ? Math.round(fitScale * zoom * 100) : 100;
+
+  useEffect(() => {
+    if (zoomMode !== "fit" || rawFitScale <= 0) return;
+    setZoom(fitZoom);
+  }, [fitZoom, rawFitScale, zoomMode]);
 
   function applyActualZoom(naturalWidth: number, naturalHeight: number) {
     const viewport = viewportRef.current;
@@ -191,7 +197,7 @@ export function PhotoViewer({
   }
 
   function handleFit() {
-    setZoom(1);
+    setZoom(fitZoom);
     setZoomMode("fit");
     setTranslate({ x: 0, y: 0 });
     setUsingOriginal(false);
@@ -210,7 +216,9 @@ export function PhotoViewer({
     setZoom((current) => {
       const next = current / 1.25;
       if (next <= 1.01) {
-        setZoomMode("fit");
+        // 小图在“适应”模式下会放大到大于 100%；缩小到这里表示回到 100%，
+        // 不应重新切回“适应”，否则效果会被 fit effect 立刻还原。
+        setZoomMode(rawFitScale > 1 ? "custom" : "fit");
         setTranslate({ x: 0, y: 0 });
         setUsingOriginal(false);
         return 1;
@@ -331,7 +339,7 @@ export function PhotoViewer({
         onPointerCancel={endDrag}
         onDoubleClick={() => {
           if (!photo) return;
-          if (zoom <= 1.01) handleActual();
+          if (zoomMode === "fit") handleActual();
           else handleFit();
         }}
         style={{ touchAction: zoom > 1.01 ? "none" : undefined }}
@@ -540,6 +548,8 @@ export function PhotoViewer({
             size="sm"
             disabled={!photo}
             title="适应屏幕"
+            aria-pressed={zoomMode === "fit"}
+            data-testid="fit-button"
             onClick={handleFit}
           >
             适应
@@ -549,6 +559,8 @@ export function PhotoViewer({
             size="sm"
             disabled={!photo}
             title="以 100% 查看（使用原图预览）"
+            aria-pressed={zoomMode === "actual"}
+            data-testid="actual-size-button"
             onClick={handleActual}
           >
             100%

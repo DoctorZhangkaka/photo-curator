@@ -165,23 +165,29 @@ export default function CullerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 每个 albumId 只自动扫描一次
   }, [albumId, albumQuery.data]);
 
+  const loadMorePhotos = useCallback(async () => {
+    if (!photosQuery.hasNextPage || photosQuery.isFetchingNextPage) return;
+    try {
+      await photosQuery.fetchNextPage();
+    } catch (error) {
+      const friendly = describeError(error);
+      toast({ variant: "error", title: "加载更多照片失败", description: friendly.description });
+    }
+  }, [photosQuery.hasNextPage, photosQuery.isFetchingNextPage, photosQuery.fetchNextPage, toast]);
+
   // 接近已载入末尾时自动加载下一页；避免胶片栏一次挂载全部。
   useEffect(() => {
     if (!photosQuery.hasNextPage || photosQuery.isFetchingNextPage) return;
     if (photos.length === 0) return;
     if (currentIndex >= photos.length - 5) {
-      void photosQuery.fetchNextPage().catch((error: unknown) => {
-        const friendly = describeError(error);
-        toast({ variant: "error", title: "加载更多照片失败", description: friendly.description });
-      });
+      void loadMorePhotos();
     }
   }, [
     currentIndex,
     photos.length,
     photosQuery.hasNextPage,
     photosQuery.isFetchingNextPage,
-    photosQuery.fetchNextPage,
-    toast,
+    loadMorePhotos,
   ]);
 
   // 预加载当前照片前后各两张（不触发已浏览标记）。
@@ -711,12 +717,7 @@ export default function CullerPage() {
             }}
             hasNextPage={Boolean(photosQuery.hasNextPage)}
             isFetchingNextPage={photosQuery.isFetchingNextPage}
-            onLoadMore={() => {
-              void photosQuery.fetchNextPage().catch((error: unknown) => {
-                const friendly = describeError(error);
-                toast({ variant: "error", title: "加载更多照片失败", description: friendly.description });
-              });
-            }}
+            onLoadMore={loadMorePhotos}
           />
         </div>
 

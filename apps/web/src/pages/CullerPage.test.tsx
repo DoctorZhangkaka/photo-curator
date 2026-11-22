@@ -481,6 +481,19 @@ describe("CullerPage 键盘与状态操作", () => {
 });
 
 describe("CullerPage 导航与筛选", () => {
+  it("进入相册和切换照片后默认都是适应视图", async () => {
+    renderCuller();
+    await waitForFirstPhoto();
+
+    expect(screen.getByTestId("fit-button")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("actual-size-button")).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "下一张" }));
+    await screen.findByAltText("大图：DSCF0002");
+    expect(screen.getByTestId("fit-button")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("actual-size-button")).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("上一张/下一张边界正确，胶片栏可以跳转", async () => {
     renderCuller();
     await waitForFirstPhoto();
@@ -678,6 +691,14 @@ describe("清理流程", () => {
     await waitForFirstPhoto();
     fireEvent.click(screen.getByTestId("cleanup-button"));
     await screen.findByTestId("cleanup-modal");
+
+    const thumbnail = await screen.findByTestId("cleanup-thumbnail");
+    expect(thumbnail.querySelector("img")?.getAttribute("src")).toContain(
+      "/api/photos/p3/thumbnail",
+    );
+    fireEvent.mouseEnter(thumbnail);
+    expect(await screen.findByTestId("cleanup-thumbnail-preview")).toBeInTheDocument();
+    fireEvent.mouseLeave(thumbnail);
 
     fireEvent.click(screen.getByTestId("cleanup-confirm"));
 

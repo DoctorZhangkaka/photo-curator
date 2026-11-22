@@ -12,7 +12,7 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 DEFAULT_PHOTO_ROOT = Path("/Users/eason/Desktop/相册")
 DEFAULT_EXPORT_DIR_NAME = "精选原相册"
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
