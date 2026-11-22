@@ -28,6 +28,7 @@ EXIFTOOL_TAGS = (
     "ISO",
     "ImageWidth",
     "ImageHeight",
+    "ImageSize",
     "Orientation",
 )
 
@@ -62,6 +63,28 @@ def _to_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _parse_image_size(value: Any) -> tuple[int, int] | None:
+    """解析 ExifTool 的 ImageSize（如 "6240 4160" 或 "6240x4160"）。
+
+    RAF 的 ImageWidth/ImageHeight 可能是内嵌预览尺寸，Composite ImageSize 才是
+    相机输出的完整图像尺寸，因此 RAW 元数据优先使用它。
+    """
+
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        width, height = _to_int(value[0]), _to_int(value[1])
+    else:
+        text = str(value).replace("x", " ").replace("X", " ").replace(",", " ")
+        parts = text.split()
+        if len(parts) < 2:
+            return None
+        width, height = _to_int(parts[0]), _to_int(parts[1])
+    if not width or not height:
+        return None
+    return width, height
 
 
 def _to_int(value: Any) -> int | None:
@@ -200,6 +223,7 @@ def read_raw_metadata_batch(paths: list[Path], exiftool_path: str | None) -> dic
             source = record.get("SourceFile")
             if not source:
                 continue
+            full_size = _parse_image_size(record.get("ImageSize"))
             metadata = _build_metadata(
                 capture_time=normalize_exif_datetime(record.get("DateTimeOriginal") or record.get("CreateDate")),
                 make=record.get("Make"),
@@ -209,8 +233,8 @@ def read_raw_metadata_batch(paths: list[Path], exiftool_path: str | None) -> dic
                 fnumber=record.get("FNumber"),
                 exposure=record.get("ExposureTime"),
                 iso=record.get("ISO"),
-                width=record.get("ImageWidth"),
-                height=record.get("ImageHeight"),
+                width=full_size[0] if full_size else record.get("ImageWidth"),
+                height=full_size[1] if full_size else record.get("ImageHeight"),
                 orientation=record.get("Orientation"),
             )
             result[str(Path(source).resolve())] = metadata
