@@ -5,7 +5,7 @@
     .venv/bin/python scripts/create-fixtures.py --root /tmp/photo-curator-demo
     .venv/bin/python scripts/create-fixtures.py --root /tmp/pc-perf --count 1000
 
-注意：只写入指定目录，绝不允许指向真实相册目录。默认拒绝 /Users/eason/Desktop/相册。
+注意：只写入指定目录，绝不允许指向真实相册目录。默认拒绝 ~/Desktop/相册。
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from tests.fixtures.generate import create_demo_root, make_jpeg  # noqa: E402
 
 DEFAULT_ROOT = Path("/tmp/photo-curator-demo")
-REAL_ROOT = Path("/Users/eason/Desktop/相册").resolve()
+REAL_ROOT = (Path.home() / "Desktop" / "相册").resolve()
 
 
 def guard_root(root: Path) -> Path:

@@ -57,7 +57,7 @@
 ```json
 {
   "appVersion": "0.1.0",
-  "photoRoot": "/Users/eason/Desktop/相册",
+  "photoRoot": "/Users/example/Desktop/相册",
   "exportDirName": "精选原相册",
   "exportRoot": ".../精选原相册",
   "dataDir": "...",
@@ -299,7 +299,7 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
       {
         "id": "uuid", "photoGroupId": "uuid", "assetId": "uuid", "displayName": "DSCF0001",
         "sourceRelativePath": "DSCF0001.JPG",
-        "destinationPath": "/Users/eason/.Trash/DSCF0001.JPG",
+        "destinationPath": "/Users/example/.Trash/DSCF0001.JPG",
         "sourceSizeBytes": 1, "sourceMtimeNs": 1, "contentSha256": null,
         "result": "success | skipped | conflict | failed | restored | pending",
         "errorCode": null, "errorMessage": null, "groupIndex": 0

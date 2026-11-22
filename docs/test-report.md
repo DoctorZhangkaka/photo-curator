@@ -2,7 +2,7 @@
 
 - 报告时间：2026-11-22（Asia/Shanghai）
 - 环境：macOS 26.4.1（arm64）、Python 3.12.13、Node.js 26.0.0（npm 11.12.1）、rawpy 0.28.0 / LibRaw、PyObjC 13.0
-- 真实相册目录 `/Users/eason/Desktop/相册` **未用于任何自动化测试或验收**。所有测试根目录均位于 pytest 临时目录、`tests/.tmp` 或 `/tmp`。
+- 真实相册目录 `~/Desktop/相册` **未用于任何自动化测试或验收**。所有测试根目录均位于 pytest 临时目录、`tests/.tmp` 或 `/tmp`。
 - ExifTool：已通过 Homebrew 安装 13.55（`/opt/homebrew/bin/exiftool`）。自动化测试不依赖它；真实 RAF 的元数据读取另做只读验证。
 
 ## 1. 结果汇总
