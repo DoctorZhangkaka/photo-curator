@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..constants import OP_STATUSES, OP_TYPES
+from ..constants import OP_STATUSES, OP_TYPE_CLEANUP, OP_TYPE_ORGANIZE, OP_TYPES
 from ..context import AppContext
 from ..errors import ApiError, ErrorCode
 from ..issues import list_issues
@@ -78,6 +78,30 @@ def get_job(job_id: str, context: AppContext = Depends(get_context)) -> dict:
     if job is None:
         raise ApiError(ErrorCode.JOB_NOT_FOUND, "任务不存在或已结束。", status_code=404)
     return {"job": job.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# 原地整理
+# ---------------------------------------------------------------------------
+@router.post("/albums/{album_id}/organize/preflight")
+def organize_preflight(
+    album_id: str,
+    context: AppContext = Depends(get_context),
+    session: Session = Depends(get_session),
+) -> dict:
+    require_album(session, album_id)
+    return context.organize.preflight(album_id)
+
+
+@router.post("/albums/{album_id}/organize/execute")
+def organize_execute(
+    album_id: str,
+    payload: PreflightExecuteRequest,
+    context: AppContext = Depends(get_context),
+    session: Session = Depends(get_session),
+) -> dict:
+    require_album(session, album_id)
+    return context.organize.execute(album_id, token=payload.preflightToken, idempotency_key=payload.idempotencyKey)
 
 
 # ---------------------------------------------------------------------------
@@ -157,13 +181,19 @@ def operation_detail(operation_id: str, session: Session = Depends(get_session))
     album = session.get(Album, operation.album_id) if operation.album_id else None
     items = operation_items(session, operation.id)
     from ..cleanup import can_restore_cleanup
+    from ..organizing import can_restore_organize
 
+    can_restore = (
+        can_restore_cleanup(operation, items)
+        if operation.type == OP_TYPE_CLEANUP
+        else can_restore_organize(operation, items)
+    )
     return {
         "operation": operation_to_dict(
             operation,
             album_name=album.name if album else None,
             items=items,
-            can_restore=can_restore_cleanup(operation, items),
+            can_restore=can_restore,
         )
     }
 
@@ -172,8 +202,16 @@ def operation_detail(operation_id: str, session: Session = Depends(get_session))
 def restore_operation(
     operation_id: str,
     context: AppContext = Depends(get_context),
+    session: Session = Depends(get_session),
 ) -> dict:
-    return context.cleanup.restore(operation_id)
+    operation = session.get(Operation, operation_id)
+    if operation is None:
+        raise ApiError(ErrorCode.OPERATION_NOT_FOUND, "操作记录不存在。", status_code=404)
+    if operation.type == OP_TYPE_CLEANUP:
+        return context.cleanup.restore(operation_id)
+    if operation.type == OP_TYPE_ORGANIZE:
+        return context.organize.rollback(operation_id)
+    raise ApiError(ErrorCode.INVALID_REQUEST, "该操作不支持撤销。", status_code=400)
 
 
 # ---------------------------------------------------------------------------

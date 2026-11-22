@@ -44,7 +44,15 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
   }, [operationId]);
 
   const operation = detailQuery.data?.operation;
-  const destinationLabel = operation?.type === "cleanup" ? "废纸篓 / 目标位置" : "目标相对路径";
+  const isOrganizeUndo = operation?.type === "organize";
+  const destinationLabel =
+    operation?.type === "cleanup"
+      ? "废纸篓 / 目标位置"
+      : operation?.type === "organize"
+        ? "整理后目标位置"
+        : operation?.type === "organize_undo"
+          ? "原路径（目标）"
+          : "目标相对路径";
 
   async function handleRestore() {
     if (!operation) return;
@@ -63,14 +71,20 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
       if (result.alreadyRestored) {
         toast({ variant: "info", title: "该操作已经恢复过", description: "没有文件被重复移动。" });
       } else if (restoreOperation && restoreOperation.status === "success") {
-        toast({ variant: "success", title: "恢复完成", description: "文件已回到原路径。" });
+        toast({
+          variant: "success",
+          title: isOrganizeUndo ? "撤销整理完成" : "恢复完成",
+          description: isOrganizeUndo ? "文件已移回整理前的位置。" : "文件已回到原路径。",
+        });
       } else {
         toast({
           variant: "error",
-          title: "恢复未全部成功",
+          title: isOrganizeUndo ? "撤销整理未全部完成" : "恢复未全部成功",
           description:
             restoreOperation?.errorSummary ??
-            "部分文件未能恢复。请查看逐文件结果，必要时到 Finder 废纸篓手动恢复。",
+            (isOrganizeUndo
+              ? "部分文件未能移回。请查看逐文件结果，必要时在 Finder 中核对。"
+              : "部分文件未能恢复。请查看逐文件结果，必要时到 Finder 废纸篓手动恢复。"),
           durationMs: 12000,
         });
       }
@@ -88,7 +102,7 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
       open={Boolean(operationId)}
       onClose={onClose}
       title={`${typeLabel}详情`}
-      description={operation ? `操作 ID：${operation.id}` : "清理、恢复、导出与扫描的逐文件记录"}
+      description={operation ? `操作 ID：${operation.id}` : "清理、恢复、导出、整理与扫描的逐文件记录"}
       size="xl"
       closeDisabled={restoreMutation.isPending}
       testId="operation-detail"
@@ -129,7 +143,7 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
                 onClick={() => setRestoreArmed(true)}
                 disabled={restoreArmed || restoreMutation.isPending}
               >
-                尝试恢复
+                {isOrganizeUndo ? "撤销整理" : "尝试恢复"}
               </Button>
             ) : null}
           </div>
@@ -167,11 +181,13 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
           {restoreArmed ? (
             <div className="rounded-lg border border-sky-500/25 bg-sky-500/[0.06] px-3 py-2.5" role="alert">
               <p className="flex items-center gap-1.5 text-xs font-semibold text-sky-200">
-                <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" /> 确认尝试恢复？
+                <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />{" "}
+                {isOrganizeUndo ? "确认撤销本次整理？" : "确认尝试恢复？"}
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-ink-300">
-                只会把本操作中实际移入废纸篓的文件移回原路径；原路径已有新文件时不会覆盖。废纸篓已清空的项目会失败，
-                可在 Finder 废纸篓中手动恢复。
+                {isOrganizeUndo
+                  ? "只会把本次实际移动的文件移回整理前的原路径；原本已在 JPG/RAW 的文件不会移动。原路径已有新文件时不会覆盖。"
+                  : "只会把本操作中实际移入废纸篓的文件移回原路径；原路径已有新文件时不会覆盖。废纸篓已清空的项目会失败，可在 Finder 废纸篓中手动恢复。"}
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <Button
@@ -181,7 +197,7 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
                   loading={restoreMutation.isPending}
                   onClick={() => void handleRestore()}
                 >
-                  确认恢复
+                  {isOrganizeUndo ? "确认撤销整理" : "确认恢复"}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setRestoreArmed(false)} disabled={restoreMutation.isPending}>
                   取消
@@ -191,7 +207,12 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
           ) : null}
 
           {restoreError ? (
-            <ErrorState error={restoreError} title="恢复请求未完成" onRetry={() => void handleRestore()} retryLabel="再次尝试恢复" />
+            <ErrorState
+              error={restoreError}
+              title={isOrganizeUndo ? "撤销整理请求未完成" : "恢复请求未完成"}
+              onRetry={() => void handleRestore()}
+              retryLabel={isOrganizeUndo ? "再次尝试撤销" : "再次尝试恢复"}
+            />
           ) : null}
 
           {restoreSummary ? (
@@ -208,7 +229,7 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
                 ) : (
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" aria-hidden="true" />
                 )}
-                恢复结果
+                {isOrganizeUndo ? "撤销整理结果" : "恢复结果"}
               </p>
               <p className="mt-1 text-[11px] text-ink-300">{restoreSummary}</p>
               {restoreFailures.length > 0 ? (
@@ -291,7 +312,7 @@ export function OperationDetailDialog({ operationId, onClose }: OperationDetailD
           </section>
 
           <p className="text-[10px] leading-relaxed text-ink-500">
-            操作记录保存在本地数据库中，不会写入源相册，也不会自动清除。清理记录中的目标位置为 macOS 废纸篓返回的实际路径。
+            操作记录保存在本地数据库中，不会写入源相册，也不会自动清除。清理记录中的目标位置为 macOS 废纸篓返回的实际路径；整理记录中的目标位置为相册内相对路径。
           </p>
         </div>
       ) : null}

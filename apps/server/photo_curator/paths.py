@@ -96,6 +96,36 @@ class PathGuard:
         if not path.is_file() or path.is_symlink():
             raise ApiError(ErrorCode.PATH_OUTSIDE_ROOT, "目标不是普通文件。", status_code=403)
 
+
+    def organize_file_path(
+        self,
+        album_relative_path: str,
+        kind_dir: str,
+        filename: str,
+        *,
+        must_exist: bool = False,
+    ) -> Path:
+        """原地整理目标：<album>/JPG/<filename> 或 <album>/RAW/<filename>。
+
+        只允许常规文件名，绝不覆盖已有文件；调用方仍需在移动前做最终存在性检查。
+        """
+
+        if kind_dir not in {"JPG", "RAW"}:
+            raise ApiError(ErrorCode.INVALID_REQUEST, "整理子目录只能是 JPG 或 RAW。", status_code=400)
+        if not filename or "\x00" in filename or "/" in filename or "\\" in filename:
+            raise ApiError(ErrorCode.PATH_OUTSIDE_ROOT, "整理目标文件名非法。", status_code=400)
+        if filename in {".", ".."}:
+            raise ApiError(ErrorCode.PATH_OUTSIDE_ROOT, "整理目标文件名非法。", status_code=400)
+        album_dir = self.album_dir(album_relative_path, must_exist=True)
+        target = album_dir / kind_dir / filename
+        self._ensure_within(target.resolve(strict=False), album_dir.resolve(strict=False))
+        self._ensure_no_symlink(target)
+        if target.parent.exists() and not target.parent.is_dir():
+            raise ApiError(ErrorCode.DESTINATION_CONFLICT, "整理目标目录不是文件夹。", status_code=409)
+        if must_exist:
+            self._ensure_regular_file(target)
+        return target
+
     def export_dir_for_album(self, album_relative_path: str) -> Path:
         rel = self._validate_relative(album_relative_path)
         if len(rel.parts) != 1:

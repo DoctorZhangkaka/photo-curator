@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "photo-curator"
-version = "0.3.2"
+version = "0.4.0"
 description = "本地相册精选助手：RAW/JPG 配对浏览、两阶段清理与增量精选导出"
 readme = { text = "本地相册精选助手（开发中）", content-type = "text/markdown" }
 requires-python = ">=3.11,<3.14"

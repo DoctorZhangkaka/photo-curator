@@ -28,7 +28,7 @@ FastAPI（127.0.0.1:8765）
 3. 每张逻辑照片是一个操作组：JPG＋RAW 必须全部成功；组内一个失败后立即停止该组，回滚已移动文件，不留下静默半组。
 4. 回滚失败时组标记为冲突、操作标记失败、写入严重异常，并在明细中保留实际废纸篓位置。
 5. 恢复只使用原生 API 返回并持久化的废纸篓位置；原路径已有文件时拒绝覆盖。
-6. 应用不存在调用 `os.remove`/`unlink` 删除源照片的路径。`unlink` 只用于本应用的预览/导出临时文件。
+6. 应用不存在直接删除源照片内容的路径。原地整理使用 `os.link` 创建目标名后再 `unlink` 源名（移动语义，inode 和内容保留）；`unlink` 还用于本应用的预览/导出临时文件。绝不通过 `unlink` 单独删除源照片。
 7. `PathGuard` 拒绝绝对路径、`..`、超过两级的资产路径、相册内/导出目标中的符号链接；导出根被替换为符号链接时同样拒绝。
 8. API 不接受文件路径参数；只接受相册 ID、照片 ID、资产 ID、预检令牌和幂等键。
 
@@ -109,6 +109,35 @@ POST operations/{cleanupId}/restore
 ```
 
 崩溃恢复：启动时把所有 `operations.status=executing` 标记为 `interrupted`（“应用中断，执行结果需人工核对”），绝不当作成功；过期预检自然失效；导出临时文件在启动时清理。
+
+### 原地整理协议（0.4.0）
+
+```text
+POST organize/preflight
+  ├─ 强制重新扫描（同相册锁）
+  ├─ 遍历 pairing=normal 的 present 资产
+  ├─ 目标：<album>/JPG|RAW/<originalFilename>
+  ├─ 校验：目标不存在（或已是同一文件）、无符号链接、无 DB 路径冲突、无重复目标、size/mtime 一致
+  ├─ 任何冲突/缺失/配对异常 → blockers，整批拒绝；不创建可执行令牌
+  └─ 创建 operation(preflight) + 逐文件 move/skip + 一次性令牌
+
+POST organize/execute {token, idempotencyKey}
+  ├─ 幂等/令牌/占用校验同清理
+  ├─ 执行前再次校验路径、目标、size/mtime、配对状态
+  ├─ 创建 JPG/、RAW/（若不存在），拒绝符号链接/同名文件
+  ├─ 逐文件：link+unlink（目标存在原子失败）→ Asset.relative_path 更新
+  ├─ 任一失败：回滚已移动文件与 DB 路径，未执行项标记 failed
+  └─ 成功：记录逐文件 success/skip；可撤销
+
+POST operations/{organizeId}/restore
+  ├─ 仅取 organize items(result=success) 的实际移动记录
+  ├─ 预先校验目标存在、原路径不存在、size/mtime 未变化
+  ├─ 冲突时不覆盖，操作记录 conflict；原整理操作仍可重试
+  ├─ 成功：移回原路径，Asset.relative_path 还原，原 item=restored
+  └─ 全部成功：原 operation=restored；本次新建的空 JPG/RAW 目录移除
+```
+
+整理和清理、导出、扫描共享相册锁。崩溃后整理操作显示 `interrupted`；已记录的 success 项仍可通过操作详情撤销，未记录成功的半移动文件需要在 Finder/操作明细中人工核对。
 
 ## 7. 导出协议
 

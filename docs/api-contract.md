@@ -36,7 +36,7 @@
 ```json
 {
   "status": "ok | degraded | error",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "platform": "darwin",
   "python": "3.12.13",
   "database": { "ok": true, "error": null, "path": "..." },
@@ -56,7 +56,7 @@
 
 ```json
 {
-  "appVersion": "0.1.0",
+  "appVersion": "0.4.0",
   "photoRoot": "/Users/example/Desktop/相册",
   "exportDirName": "精选原相册",
   "exportRoot": ".../精选原相册",
@@ -387,7 +387,75 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
 
 前端在导出弹窗中轮询该接口（约 500ms），并同时观察 SSE；关闭弹窗后重新打开可通过操作记录继续查看。断线/刷新后可用操作 ID 查询 `GET /api/operations/{id}`。
 
-## 6. 操作记录
+## 6. 原地整理 JPG/RAW
+
+### `POST /api/albums/{albumId}/organize/preflight`
+
+```json
+{
+  "albumId": "uuid",
+  "albumName": "2026-京都旅行",
+  "token": "短期令牌 | null",
+  "expiresAt": "ISO | null",
+  "operationId": "uuid | null",
+  "summary": {
+    "photoCount": 10, "fileCount": 15, "moveCount": 12,
+    "skipCount": 3, "jpgCount": 8, "rawCount": 4, "totalBytes": 12345678
+  },
+  "blocked": false,
+  "blockers": [
+    { "code": "PAIRING_CONFLICT | ASSET_MISSING | DESTINATION_CONFLICT | SOURCE_CHANGED", "message": "...", "groupId": "...", "displayName": "...", "relativePath": "...", "destinationRelativePath": "..." }
+  ],
+  "entries": [
+    {
+      "assetId": "uuid", "groupId": "uuid", "displayName": "DSCF0001",
+      "kind": "jpg", "extension": ".JPG", "originalFilename": "DSCF0001.JPG",
+      "sourceRelativePath": "DSCF0001.JPG",
+      "destinationRelativePath": "JPG/DSCF0001.JPG",
+      "destinationAbsolutePath": "/.../相册/2026-京都旅行/JPG/DSCF0001.JPG",
+      "sourceSizeBytes": 1, "sourceMtimeNs": 1,
+      "action": "move | skip", "groupIndex": 0
+    }
+  ],
+  "message": "将把 12 个文件原地移动到相册内的 JPG/RAW 子目录；其中 3 个已经在正确位置。"
+}
+```
+
+- 预检会先重新扫描相册；目标结构固定为 `<相册>/JPG/<原文件名>` 与 `<相册>/RAW/<原文件名>`。
+- 存在任何 `blockers` 时 `token` 为 `null`，整批不执行，不覆盖任何文件。
+- 已经处于正确位置、没有实际移动的文件记录为 `skip`。
+- 空文件/无移动时同样返回 `token: null`，`message` 说明无需整理。
+
+### `POST /api/albums/{albumId}/organize/execute`
+
+```json
+{ "preflightToken": "...", "idempotencyKey": "uuid" }
+```
+
+成功或失败返回 `operation`（类型 `organize`）、`summary`、`blockers`、`idempotentReplay`。逐文件 `result` 为 `success`、`skipped`、`failed`、`restored`；失败的整批执行会回滚已移动文件，`failed` 项保留错误。
+
+- 预检后源文件、目录或配对状态变化：`409 SOURCE_CHANGED`，整批不执行，操作记录标记失败。
+- 同一 `idempotencyKey` 重放返回原操作，不重复移动。
+- 移动使用 hard link + unlink，目标已存在时绝不覆盖；若文件系统不支持 hard link，回退 `rename` 前仍做目标存在性检查。
+
+### `POST /api/operations/{operationId}/restore`
+
+`organize` 操作与清理共用该路由；后端按操作类型分发：
+
+```json
+{
+  "operation": { "type": "organize_undo", "status": "success | partial_failure | failed" },
+  "originalOperation": { "type": "organize", "canRestore": false },
+  "alreadyRestored": false
+}
+```
+
+- 只移回本次实际移动的文件；原本已在 `JPG/` 或 `RAW/` 的 `skip` 文件不受影响。
+- 原路径已有新文件：`conflict`，不覆盖，原整理操作仍可重试撤销。
+- 全部还原后，若本次新建的 `JPG/`、`RAW/` 目录为空则移除。
+- 回滚操作记录类型为 `organize_undo`；失败的实际位置保留在逐文件明细中。
+
+## 7. 操作记录
 
 ### `GET /api/operations?albumId=&type=&status=&from=&to=&limit=50&offset=0`
 
@@ -397,7 +465,7 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
 {
   "items": [
     {
-      "id": "uuid", "type": "scan | cleanup | restore | export",
+      "id": "uuid", "type": "scan | cleanup | restore | export | organize | organize_undo",
       "status": "preflight | executing | success | partial_failure | failed | restored | interrupted",
       "albumId": "uuid", "albumName": "2026-京都旅行",
       "parentOperationId": null,
@@ -416,7 +484,7 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
 
 同上并包含 `items[]`（字段见清理执行示例），`canRestore` 表示是否还可撤销。
 
-## 7. 异常中心
+## 8. 异常中心
 
 ### `GET /api/albums/{albumId}/issues`
 
@@ -448,7 +516,7 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
 
 仅 macOS，参数数组调用 `open -R`，路径必须通过数据库与根目录校验。返回 `{"revealed": true, "relativePath": "..."}`。
 
-## 8. 标准错误码
+## 9. 标准错误码
 
 | code | HTTP | 含义 |
 | --- | --- | --- |
@@ -472,27 +540,28 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
 | `FORBIDDEN_ORIGIN` | 403 | 跨来源请求被拒绝 |
 | `INVALID_REQUEST` | 400 | 参数非法 |
 
-## 9. 前端必须满足的交互约束
+## 10. 前端必须满足的交互约束
 
 这些来自产品文档，属于验收项：
 
 1. 中文界面，统一使用“相册”/“拍摄相册”，不得出现“旅行专用”逻辑。
 2. 浏览状态与筛选状态是两个独立维度；只有大图**加载成功后**才自动标记已浏览，胶片栏缩略图加载不标记。
 3. 快捷键：`←` `→` 切换，`F` 精选，`X`/`Delete` 待删除，`Space` 自动播放，`I` 信息面板，`U` 切换浏览状态，`Esc` 关闭弹窗/退出全屏。输入框、文本域、`contenteditable` 聚焦时不触发。
-4. 自动播放默认 3 秒，可选 2/3/5/10；到末尾停止；用户执行精选/待删除/清理/导出时自动暂停。
-5. 排序切换后保留当前逻辑照片；过滤导致当前照片不在列表中时，选择新列表第一张并保持稳定。
+4. 自动播放默认 3 秒，可选 2/3/5/10；到末尾停止；用户执行精选/待删除/清理/导出/整理时自动暂停。
+5. 排序切换后保留当前逻辑照片；过滤或清理导致当前照片不在列表中时，落到记忆位置的下一位（末尾取最后一张），不回到第一张。
 6. 预加载当前照片前后各至少 2 张。
 7. 胶片栏虚拟化（建议 `@tanstack/react-virtual`），不能一次挂载全部图片。
 8. 大图支持适应屏幕/100%/放大缩小/拖动；全屏。
 9. 右侧信息面板可折叠（`I`），显示两个状态、文件形态、EXIF、文件清单（相对路径、大小、缺失标记）；冲突组可只读预览文件。
 10. 清理：预检弹窗展示照片数、文件数、释放空间、阻止项、明确的“移入废纸篓，不会永久删除”；有阻止项时禁用确认；成功后 15 秒撤销入口；操作详情可“尝试恢复”。
 11. 导出：预检展示照片/JPG/RAW/字节数、目标目录、跳过与冲突；确认后显示进度；结束时展示成功/跳过/冲突/失败明细。
-12. 操作记录：按相册、类型、状态、时间过滤，可展开查看逐文件明细。
-13. 异常中心：分类展示配对冲突/缺失/导出冲突/RAW 预览失败/扫描错误；提供“在 Finder 中显示”和“重新扫描”，不提供自动删除冲突。
-14. 视觉：深色/中性背景，照片为视觉中心；精选/待删除同时用颜色、图标、文字表达；按钮有可读标签；焦点清晰；弹窗支持 Esc 与焦点约束；200% 缩放仍可用；窄窗口信息面板可折叠、胶片栏不挤没大图。
-15. 错误提示必须可读，并给出下一步（例如 409 后“刷新后重试”）。
+12. 原地整理：预检展示逐文件源→目标和阻止项；必须输入相册名二次确认；执行前重新校验，失败整批回滚；结果和操作详情均提供撤销整理。
+13. 操作记录：按相册、类型、状态、时间过滤，可展开查看逐文件明细。
+14. 异常中心：分类展示配对冲突/缺失/导出冲突/RAW 预览失败/扫描错误；提供“在 Finder 中显示”和“重新扫描”，不提供自动删除冲突。
+15. 视觉：深色/中性背景，照片为视觉中心；精选/待删除同时用颜色、图标、文字表达；按钮有可读标签；焦点清晰；弹窗支持 Esc 与焦点约束；200% 缩放仍可用；窄窗口信息面板可折叠、胶片栏不挤没大图。
+16. 错误提示必须可读，并给出下一步（例如 409 后“刷新后重试”）。
 
-## 10. 前端工程约定
+## 11. 前端工程约定
 
 - React 18/19 + TypeScript + Vite + Tailwind CSS + TanStack Query；图标可用轻量依赖。
 - 源码位于 `apps/web/src`；构建产物 `apps/web/dist` 由后端同源托管。

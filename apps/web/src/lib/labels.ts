@@ -48,6 +48,8 @@ export const OPERATION_TYPE_LABELS: Record<OperationType, string> = {
   cleanup: "清理",
   restore: "撤销恢复",
   export: "导出",
+  organize: "整理 JPG/RAW",
+  organize_undo: "撤销整理",
 };
 
 export const OPERATION_STATUS_LABELS: Record<OperationStatus, string> = {

@@ -1,6 +1,6 @@
 # 测试报告（一期）
 
-- 报告时间：2026-11-22（Asia/Shanghai）
+- 报告时间：2026-11-23（Asia/Shanghai）
 - 环境：macOS 26.4.1（arm64）、Python 3.12.13、Node.js 26.0.0（npm 11.12.1）、rawpy 0.28.0 / LibRaw、PyObjC 13.0
 - 真实相册目录 `~/Desktop/相册` **未用于任何自动化测试或验收**。所有测试根目录均位于 pytest 临时目录、`tests/.tmp` 或 `/tmp`。
 - ExifTool：已通过 Homebrew 安装 13.55（`/opt/homebrew/bin/exiftool`）。自动化测试不依赖它；真实 RAF 的元数据读取另做只读验证。
@@ -9,17 +9,17 @@
 
 | 检查项 | 命令 | 结果 |
 | --- | --- | --- |
-| 后端单元 + 集成 + 原生废纸篓 + 性能 | `.venv/bin/python -m pytest -q` | **129 passed**，1 warning，5.90s |
+| 后端单元 + 集成 + 原生废纸篓 + 性能 | `.venv/bin/python -m pytest -q` | **135 passed**，1 warning，6.50s |
 | 后端原生 macOS 废纸篓专项 | `.venv/bin/python -m pytest tests/integration/test_trash_macos.py -v` | **2 passed**（真实 `NSFileManager`，夹具已恢复并清理） |
 | 大相册性能 | `.venv/bin/python -m pytest tests/performance -q -s` | **1 passed**：扫描 1000 张逻辑照片 **0.71s**，首屏 200 张 **0.010s**，遍历全部 5 页 **0.04s** |
 | 前端类型检查 | `npm run typecheck` | **通过**（TypeScript strict，`tsc -b`） |
-| 前端单元/交互测试 | `npm test` | **18 passed**（Vitest 5.1.1，3 个测试文件） |
-| 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 511.55 kB（gzip 152.34 kB），CSS 48.84 kB（gzip 9.18 kB） |
+| 前端单元/交互测试 | `npm test` | **19 passed**（Vitest 5.1.1，3 个测试文件） |
+| 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 527.46 kB（gzip 155.07 kB），CSS 49.09 kB（gzip 9.21 kB） |
 | 依赖安全审计 | `npm audit` | **0 vulnerabilities** |
 | GitHub Actions（macOS） | 全部 PR 与 `main` | **通过**（后端测试、类型检查、Vitest、生产构建） |
-| Playwright 端到端 | `npm run test:e2e` | **2 passed**，11.6s；含默认适应视图与清理缩略图悬浮预览，使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
+| Playwright 端到端 | `npm run test:e2e` | **3 passed**，17.4s；含默认适应视图、清理缩略图、原地整理与撤销，使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
 
-测试数量构成：54 个单元测试（配对、自然排序、路径安全、EXIF 文本清理与 ExifTool 解析）、74 个集成/接口测试、1 个性能测试。
+测试数量构成：54 个单元测试（配对、自然排序、路径安全、EXIF 文本清理与 ExifTool 解析）、80 个集成/接口测试、1 个性能测试。
 
 唯一警告来自 FastAPI/Starlette 的测试客户端对 `httpx` 的弃用提示，不影响运行；没有测试被跳过。
 
@@ -84,11 +84,19 @@
 
 ## 4. 前端测试覆盖
 
-`npm test`：18 个测试全部通过。
+`npm test`：19 个测试全部通过。
 
-- `src/pages/CullerPage.test.tsx`（13 个）：按 F 精选、X/Delete 只改状态且不移动文件、输入框/select 聚焦时快捷键不触发、自动播放暂停、方向键/胶片栏边界、排序/过滤保留当前照片与回退首张、进入相册/切换照片后默认为适应视图、大图加载成功后才标记已浏览、409 `STALE_VERSION` 刷新重试、虚拟化胶片栏只挂载子集、弹窗焦点约束/Esc、清理预检阻止项、清理缩略图悬浮预览、清理成功 + 严重错误 + 组统计 + 撤销、UUID 幂等键。
+- `src/pages/CullerPage.test.tsx`（14 个）：按 F 精选、X/Delete 只改状态且不移动文件、输入框/select 聚焦时快捷键不触发、自动播放暂停、方向键/胶片栏边界、排序切换保留当前照片、清理/过滤后落到原位置下一位、进入相册/切换照片后默认为适应视图、大图加载成功后才标记已浏览、409 `STALE_VERSION` 刷新重试、虚拟化胶片栏只挂载子集、弹窗焦点约束/Esc、清理预检阻止项、清理缩略图悬浮预览、清理成功 + 严重错误 + 组统计 + 撤销、原地整理二次确认与撤销入口、UUID 幂等键。
 - `src/components/culler/Filmstrip.test.tsx`（2 个）：左右翻批按钮存在与禁用状态、点击右翻按视口宽度滚动（不是只移动一张）。
 - `src/components/ui/Modal.test.tsx`（3 个）：焦点陷阱、Esc 关闭、关闭后焦点恢复。
+
+0.4.0 原地整理 JPG/RAW：
+
+- 新增受控整理协议：重新扫描预检 → 逐文件源/目标清单与阻止项 → 输入相册名二次确认 → 移动 → 操作记录 → 可撤销。
+- 目标已存在、配对冲突、文件缺失、符号链接、DB 路径冲突、预检后变化时整批拒绝，绝不覆盖。
+- 整批失败回滚已移动文件；撤销只还原本次实际移动项，原路径冲突时不覆盖，可重试。
+- 后端 6 个整理集成测试（含回滚冲突/符号链接）；前端整理弹窗测试；Playwright 整理移动与撤销链路。
+- 整理完成后直接更新资产路径；重新扫描后配对仍为 present/normal。
 
 0.3.2 当前照片位置保持：
 
@@ -122,9 +130,9 @@ tsc -b → 通过
 vite v7.3.8 building client environment for production...
 ✓ 1674 modules transformed.
 dist/index.html                   0.45 kB │ gzip:   0.31 kB
-dist/assets/index-CJWIxBOK.css   48.63 kB │ gzip:   9.13 kB
-dist/assets/index-CZfsJY2F.js   511.05 kB │ gzip: 152.14 kB
-✓ built in 1.15s
+dist/assets/index-BqcM3m9a.css   49.09 kB │ gzip:   9.21 kB
+dist/assets/index-BbXCCmct.js   527.46 kB │ gzip: 155.07 kB
+✓ built in 1.27s
 ```
 
 ## 5. 端到端验收（Playwright，生产构建）
@@ -151,6 +159,13 @@ dist/assets/index-CZfsJY2F.js   511.05 kB │ gzip: 152.14 kB
 4. `X`/按钮只改待删除状态，磁盘文件不变；再次点击取消。
 5. 自动播放控件存在。
 
+### 链路 3：原地整理（1 个测试，约 5.7s）
+
+1. 打开无冲突的人像相册，进入“整理 JPG/RAW”。
+2. 预检显示移动/已就位数量与逐文件目标；确认按钮在输入相册名前禁用。
+3. 输入相册名、确认后，源文件移动到 `JPG/`、`RAW/`，磁盘上原平铺路径消失。
+4. 结果弹窗展示成功文件数；点击撤销并确认，文件移回原路径，本次新建的空目录被移除。
+
 ### 截图（真实运行，合成夹具）
 
 | 界面 | 截图 |
@@ -161,6 +176,7 @@ dist/assets/index-CZfsJY2F.js   511.05 kB │ gzip: 152.14 kB
 | 导出结果 | [`docs/images/export.png`](images/export.png) |
 | 操作记录 | [`docs/images/operations.png`](images/operations.png) |
 | 异常中心 | [`docs/images/issues.png`](images/issues.png) |
+| 原地整理 JPG/RAW | [`docs/images/organize.png`](images/organize.png) |
 
 浏览器验收还检查了 1440×900、768 宽与 480 宽布局、全屏进入/Esc 退出、适应/100%/缩放、导出重复执行显示“已存在跳过”、清理备份提示只首次出现、会话不可用时的阻断页与重试。截图均使用 `/tmp` 下生成的测试相册。
 
