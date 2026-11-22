@@ -3,23 +3,23 @@
 - 报告时间：2026-11-22（Asia/Shanghai）
 - 环境：macOS 26.4.1（arm64）、Python 3.12.13、Node.js 26.0.0（npm 11.12.1）、rawpy 0.28.0 / LibRaw、PyObjC 13.0
 - 真实相册目录 `/Users/eason/Desktop/相册` **未用于任何自动化测试或验收**。所有测试根目录均位于 pytest 临时目录、`tests/.tmp` 或 `/tmp`。
-- ExifTool：本机未安装。RAW 元数据回退行为按设计工作（RAW-only 显示“未知”，自然文件名排序），健康检查会提示。
+- ExifTool：已通过 Homebrew 安装 13.55（`/opt/homebrew/bin/exiftool`）。自动化测试不依赖它；真实 RAF 的元数据读取另做只读验证。
 
 ## 1. 结果汇总
 
 | 检查项 | 命令 | 结果 |
 | --- | --- | --- |
-| 后端单元 + 集成 + 原生废纸篓 + 性能 | `.venv/bin/python -m pytest -q` | **127 passed**，1 warning，5.94s |
+| 后端单元 + 集成 + 原生废纸篓 + 性能 | `.venv/bin/python -m pytest -q` | **129 passed**，1 warning，5.90s |
 | 后端原生 macOS 废纸篓专项 | `.venv/bin/python -m pytest tests/integration/test_trash_macos.py -v` | **2 passed**（真实 `NSFileManager`，夹具已恢复并清理） |
 | 大相册性能 | `.venv/bin/python -m pytest tests/performance -q -s` | **1 passed**：扫描 1000 张逻辑照片 **0.71s**，首屏 200 张 **0.010s**，遍历全部 5 页 **0.04s** |
 | 前端类型检查 | `npm run typecheck` | **通过**（TypeScript strict，`tsc -b`） |
 | 前端单元/交互测试 | `npm test` | **14 passed**（Vitest 5.1.1，2 个测试文件） |
 | 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 496.74 kB（gzip 148.53 kB），CSS 34.88 kB（gzip 7.42 kB） |
 | 依赖安全审计 | `npm audit` | **0 vulnerabilities** |
-| GitHub Actions（macOS） | PR #1~#3 与 `main` | **通过**（后端测试、类型检查、Vitest、生产构建） |
+| GitHub Actions（macOS） | 全部 PR 与 `main` | **通过**（后端测试、类型检查、Vitest、生产构建） |
 | Playwright 端到端 | `npm run test:e2e` | **2 passed**，11.0s；使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
 
-测试数量构成：52 个单元测试（配对、自然排序、路径安全、EXIF 文本清理）、74 个集成/接口测试、1 个性能测试。
+测试数量构成：54 个单元测试（配对、自然排序、路径安全、EXIF 文本清理与 ExifTool 解析）、74 个集成/接口测试、1 个性能测试。
 
 唯一警告来自 FastAPI/Starlette 的测试客户端对 `httpx` 的弃用提示，不影响运行；没有测试被跳过。
 
@@ -32,7 +32,7 @@
 | `tests/unit/test_pairing.py` | 18 | PAIR-001 ~ PAIR-016：大小写、跨 RAW/JPG 目录、JPEG/ARW/DNG、仅单格式、重复 JPG、重复 RAW、多 RAW 格式、Unicode NFC、纯大小写冲突、重命名产生新配对键、JPG 优先展示 |
 | `tests/unit/test_paths.py` | 24 | `..`、绝对路径、嵌套深度、导出目录逃逸、文件/目录符号链接、导出目标符号链接、文件名注入 |
 | `tests/unit/test_natural.py` | 7 | 数字自然排序（2 < 10）、大小写、Unicode、EXIF 时间格式、预检过期判断 |
-| `tests/unit/test_metadata.py` | 3 | Pillow 读取 JPG 元数据、EXIF 文本去 NUL 填充、时间/光圈/ISO/尺寸 |
+| `tests/unit/test_metadata.py` | 5 | Pillow 读取 JPG 元数据、EXIF 文本去 NUL、ExifTool JSON 解析、`ImageSize` 优先于嵌入预览尺寸 |
 
 ### 2.2 集成/接口测试
 
@@ -71,11 +71,16 @@
 | 应用扫描 | 0.89s 完成 975 个文件/568 组，0 缺失/0 冲突/0 异常 |
 | RAF 预览 | 应用内对真实 RAF 生成缩略图 0.16s、2560 预览 0.20s，均为 JPEG 200 |
 | JPG 元数据 | 正确读出 FUJIFILM X-S20、XF56mm F1.2 R、1/4000、f/1.2、ISO 160、6240×4160、拍摄时间 |
-| 源目录 | 验证后仍为 975 个文件；临时数据库/预览缓存已删除 |
+| ExifTool 元数据 | Homebrew ExifTool 13.55：**407/407** 个 RAF 均返回拍摄时间、X-S20、镜头、光圈、快门、ISO、ImageSize 6240×4160；批量读取 2.0s |
+| RAW-only 验证 | 复制 1 个 RAF 到 `/tmp`（无 JPG）：扫描 0.07s、EXIF 完整、缩略图 0.18s、预览正常，副本验证后删除 |
+| 源目录 | 验证后仍为 975 个文件；临时数据库/预览缓存与 RAW-only 副本已删除 |
 
-验证中发现并修复了一个真实缺陷：Pillow 返回的镜头字符串带 NUL 填充，原先会显示为乱码尾部；现在 `_clean_text()` 会清理 NUL 与首尾空白，并新增 3 个单元测试。修复后用真实 JPG 复验，镜头显示为 `XF56mmF1.2 R`。
+验证中发现并修复了两个真实缺陷：
 
-该相册没有 RAW-only 组，因此 RAW-only 的排序回退仍由合成 DNG/伪造 RAW 测试覆盖。索尼 ARW 仍未做真实验证。
+1. Pillow 返回的镜头字符串带 NUL 填充，原先会显示为乱码尾部；现在 `_clean_text()` 清理 NUL 与首尾空白，并新增单元测试。
+2. RAF 的 `ImageWidth/ImageHeight` 是内嵌预览尺寸（4416×2944），不是完整图像尺寸；现在 RAW 元数据优先使用 ExifTool 的 `ImageSize`（6240×4160），无该标签时回退到原字段。新增 `_parse_image_size` 与 ExifTool JSON 解析测试。
+
+该相册原始文件没有 RAW-only 组；额外把一个 RAF 复制到 `/tmp` 做了 RAW-only 全链路验证，之后删除副本。索尼 ARW 仍未做真实验证。
 
 ## 4. 前端测试覆盖
 
@@ -153,7 +158,8 @@ dist/assets/index-kA9pWrpD.js   496.74 kB │ gzip: 148.53 kB
 
 - **索尼 ARW 真实相机样本**：未提供、未验证。真实富士 RAF 已按上文做只读验证；自动化夹具仍不含真实 RAW。其他富士/索尼机型取决于 rawpy/LibRaw 支持。
 - **真实相册上的导出/清理**：虽然用户授权该文件夹作为测试目录，但为降低风险，只做了只读扫描与预览；导出/清理仍在临时夹具上验证。
-- **ExifTool 元数据读取**：本机未安装 ExifTool，未验证真实 RAW 的拍摄时间/镜头信息；仅验证了缺失时回退与健康检查提示。
+- **ExifTool 的写入/修改能力**：本应用只使用只读参数；未验证也不使用 ExifTool 的写入功能，不修改任何照片元数据。
+- **其他 ExifTool 版本/安装方式**：本机验证的是 Homebrew 13.55；官网当前 13.64，未逐一验证版本差异。
 - **在 Finder 中点击“在 Finder 中显示”**：E2E 未触发系统 Finder 窗口；后端只做了路径校验与参数数组调用，需要人工在真实桌面确认窗口行为（不涉及照片修改）。
 - **外接卷/网络卷导出**：导出发布依赖 `os.link`；不支持硬链接的卷会明确失败并记录，未在真实网络卷验证。
 - **真实高像素照片性能与内存**：性能测试使用小尺寸合成 JPG；真实 6000 万像素 RAW 的首次解码时间与内存峰值未测。
@@ -167,4 +173,5 @@ dist/assets/index-kA9pWrpD.js   496.74 kB │ gzip: 148.53 kB
 - pytest 临时目录由 pytest 自动删除；`tests/.tmp` 仅用于导入默认应用/ E2E 夹具，已 gitignore。
 - 原生废纸篓测试与 E2E 均在成功后恢复/删除自己创建的夹具；检查 `~/.Trash` 中无 `DSCF`/`DSC0`/`pc-trash` 残留。
 - 所有测试进程已停止；临时端口 `8799` 不再监听。
+- RAW-only 验证副本与临时数据库/预览缓存已删除；真实相册只读访问，文件数仍为 975。
 - 真实照片目录未被扫描、修改或删除。
