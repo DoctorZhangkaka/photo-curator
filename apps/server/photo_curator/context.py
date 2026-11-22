@@ -11,6 +11,7 @@ from .db import Database
 from .events import EventBus
 from .exporting import ExportService, cleanup_stale_temp_files
 from .jobs import JobManager
+from .organizing import OrganizeService
 from .paths import PathGuard
 from .previews import PreviewService
 from .scanning import ScanService
@@ -36,6 +37,7 @@ class AppContext:
     jobs: JobManager
     cleanup: CleanupService
     exports: ExportService
+    organize: OrganizeService
     watcher: WatcherService
     startup_scan_thread: threading.Thread | None = None
 
@@ -75,6 +77,7 @@ def build_context(settings: Settings) -> AppContext:
     trash = create_trash_service(settings.photo_root)
     cleanup = CleanupService(settings, database, guard, scan, trash, events)
     exports = ExportService(settings, database, guard, scan, jobs, events)
+    organize = OrganizeService(settings, database, guard, scan, events)
     watcher = WatcherService(settings, scan, events)
     context = AppContext(
         settings=settings,
@@ -87,6 +90,7 @@ def build_context(settings: Settings) -> AppContext:
         jobs=jobs,
         cleanup=cleanup,
         exports=exports,
+        organize=organize,
         watcher=watcher,
     )
     from .operations import recover_interrupted_operations

@@ -5,11 +5,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  FolderInput,
   History,
   RotateCcw,
   ScanLine,
   SlidersHorizontal,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import type { OperationStatus, OperationType } from "../lib/api";
 import { dateInputToIso, formatDateTime } from "../lib/format";
@@ -28,6 +30,8 @@ const TYPE_ICONS: Record<OperationType, typeof ScanLine> = {
   cleanup: Trash2,
   restore: RotateCcw,
   export: Download,
+  organize: FolderInput,
+  organize_undo: Undo2,
 };
 
 const TYPE_OPTIONS: Array<{ value: "all" | OperationType; label: string }> = [
@@ -36,6 +40,8 @@ const TYPE_OPTIONS: Array<{ value: "all" | OperationType; label: string }> = [
   { value: "cleanup", label: "清理" },
   { value: "restore", label: "撤销恢复" },
   { value: "export", label: "导出" },
+  { value: "organize", label: "整理 JPG/RAW" },
+  { value: "organize_undo", label: "撤销整理" },
 ];
 
 const STATUS_OPTIONS: Array<{ value: "all" | OperationStatus; label: string }> = [
@@ -114,7 +120,7 @@ export default function OperationsPage() {
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-100 sm:text-3xl">操作记录</h1>
           <p className="mt-1.5 text-xs leading-relaxed text-ink-400">
-            清理、撤销恢复、导出与扫描的追加式记录。失败与冲突会单独列出，不会被后续扫描覆盖。
+            清理、撤销恢复、导出、整理与扫描的追加式记录。失败与冲突会单独列出，不会被后续扫描覆盖。
           </p>
         </div>
         <span className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 font-mono text-xs tabular-nums text-ink-300">
@@ -202,7 +208,7 @@ export default function OperationsPage() {
               description={
                 filtersActive
                   ? "尝试调整相册、类型、状态或时间范围。"
-                  : "执行清理、恢复、导出或扫描后，逐文件结果会记录在这里。"
+                  : "执行清理、恢复、导出、整理或扫描后，逐文件结果会记录在这里。"
               }
               action={
                 filtersActive ? (

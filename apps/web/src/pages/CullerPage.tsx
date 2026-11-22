@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Download,
   Filter,
+  FolderInput,
   Images,
   Loader2,
   PanelRightOpen,
@@ -45,6 +46,7 @@ import { Filmstrip } from "../components/culler/Filmstrip";
 import { InfoPanel } from "../components/culler/InfoPanel";
 import { CleanupDialog } from "../components/culler/CleanupDialog";
 import { ExportDialog } from "../components/culler/ExportDialog";
+import { OrganizeDialog } from "../components/culler/OrganizeDialog";
 
 export default function CullerPage() {
   const { albumId } = useParams<{ albumId: string }>();
@@ -63,6 +65,7 @@ export default function CullerPage() {
   const [conflictAssetId, setConflictAssetId] = useState<string | null>(null);
   const [cleanupOpen, setCleanupOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [organizeOpen, setOrganizeOpen] = useState(false);
   const [backgroundScanning, setBackgroundScanning] = useState(false);
 
   const defaultsApplied = useRef(false);
@@ -377,7 +380,7 @@ export default function CullerPage() {
       toggleViewed,
       escape: handleEscape,
     },
-    { enabled: !cleanupOpen && !exportOpen },
+    { enabled: !cleanupOpen && !exportOpen && !organizeOpen },
   );
 
   // 自动播放：到末尾停止，不循环；任何标记/清理/导出操作都会暂停。
@@ -590,6 +593,20 @@ export default function CullerPage() {
               onClick={handleRescan}
             />
             <span className="hidden h-4 w-px bg-white/[0.08] sm:block" aria-hidden="true" />
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={FolderInput}
+              data-testid="organize-button"
+              disabled={!album || backgroundScanning || album.scanStatus !== "ready"}
+              title="把 JPG/RAW 原地移动到相册内的 JPG/、RAW/ 子目录"
+              onClick={() => {
+                pauseForAction();
+                setOrganizeOpen(true);
+              }}
+            >
+              整理 JPG/RAW
+            </Button>
             <Button
               variant="secondary"
               size="sm"
@@ -818,6 +835,13 @@ export default function CullerPage() {
         albumName={album?.name ?? null}
         selectedCount={selectedCount}
         onClose={() => setExportOpen(false)}
+        onPauseAutoplay={pauseForAction}
+      />
+      <OrganizeDialog
+        open={organizeOpen}
+        albumId={albumId}
+        albumName={album?.name ?? null}
+        onClose={() => setOrganizeOpen(false)}
         onPauseAutoplay={pauseForAction}
       />
       <div className="sr-only" aria-live="polite">

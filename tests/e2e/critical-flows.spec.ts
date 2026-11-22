@@ -157,3 +157,39 @@ test("排序保留当前照片、过滤、聚焦控件时不触发快捷键", as
   await page.keyboard.press("Escape");
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
 });
+test("原地整理 JPG/RAW：预检、二次确认、移动与撤销", async ({ page }) => {
+  const portraitDir = path.join(photoRoot, "测试-人像约拍-客户A");
+  await page.goto("/");
+  const card = page.locator('[data-testid="album-card"][data-album-name="测试-人像约拍-客户A"]');
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  await card.click();
+  await expect(page.getByTestId("photo-counter")).toHaveText(/1\s*\/\s*3/, { timeout: 30_000 });
+  await expect(page.getByTestId("viewer-image")).toBeVisible();
+
+  await page.getByTestId("organize-button").click();
+  const modal = page.getByTestId("organize-modal");
+  await expect(modal).toBeVisible();
+  await expect(modal).toContainText("原地移动源文件");
+  const confirm = page.getByTestId("organize-confirm");
+  await expect(confirm).toBeDisabled();
+  await page.getByTestId("organize-confirm-input").fill("测试-人像约拍-客户A");
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
+  await expect(page.getByTestId("organize-result")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("organize-result")).toContainText(/成功移动\s*4/);
+
+  await expect.poll(() => fs.existsSync(path.join(portraitDir, "JPG", "DSC0001.JPG")), { timeout: 10_000 }).toBe(true);
+  await expect.poll(() => fs.existsSync(path.join(portraitDir, "RAW", "DSC0001.ARW")), { timeout: 10_000 }).toBe(true);
+  await expect.poll(() => fs.existsSync(path.join(portraitDir, "RAW", "DSC0002.DNG")), { timeout: 10_000 }).toBe(true);
+  await expect.poll(() => fs.existsSync(path.join(portraitDir, "JPG", "DSC0003.JPG")), { timeout: 10_000 }).toBe(true);
+  expect(fs.existsSync(path.join(portraitDir, "DSC0001.JPG"))).toBe(false);
+  expect(fs.existsSync(path.join(portraitDir, "DSC0001.ARW"))).toBe(false);
+
+  await page.getByTestId("organize-undo").click();
+  await page.getByTestId("organize-undo-confirm").click();
+  await expect(page.getByTestId("organize-undo-result")).toBeVisible({ timeout: 20_000 });
+  await expect.poll(() => fs.existsSync(path.join(portraitDir, "DSC0001.JPG")), { timeout: 10_000 }).toBe(true);
+  await expect.poll(() => fs.existsSync(path.join(portraitDir, "DSC0001.ARW")), { timeout: 10_000 }).toBe(true);
+  expect(fs.existsSync(path.join(portraitDir, "JPG"))).toBe(false);
+  expect(fs.existsSync(path.join(portraitDir, "RAW"))).toBe(false);
+});

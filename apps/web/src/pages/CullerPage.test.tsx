@@ -6,6 +6,9 @@ import type {
   Album,
   CleanupExecuteResponse,
   CleanupPreflight,
+  OrganizeExecuteResponse,
+  OrganizePreflight,
+  OperationDetail,
   Photo,
   PhotoQuery,
   RestoreResponse,
@@ -24,6 +27,8 @@ const apiMock = vi.hoisted(() => ({
   restoreOperation: vi.fn(),
   exportPreflight: vi.fn(),
   startExport: vi.fn(),
+  organizePreflight: vi.fn(),
+  organizeExecute: vi.fn(),
   getJob: vi.fn(),
   getOperation: vi.fn(),
   getIssues: vi.fn(),
@@ -249,6 +254,97 @@ function restoreResult(): RestoreResponse {
   };
 }
 
+
+function organizePreflight(): OrganizePreflight {
+  return {
+    albumId: "a1",
+    albumName: "测试-京都旅行",
+    token: "organize-token",
+    expiresAt: new Date(Date.now() + 120_000).toISOString(),
+    operationId: "op-organize",
+    summary: {
+      photoCount: 1,
+      fileCount: 1,
+      moveCount: 1,
+      skipCount: 0,
+      jpgCount: 1,
+      rawCount: 0,
+      totalBytes: 120_000,
+    },
+    blocked: false,
+    blockers: [],
+    entries: [
+      {
+        assetId: "p1-jpg",
+        groupId: "p1",
+        displayName: "DSCF0001",
+        kind: "jpg",
+        extension: ".JPG",
+        originalFilename: "DSCF0001.JPG",
+        sourceRelativePath: "DSCF0001.JPG",
+        destinationRelativePath: "JPG/DSCF0001.JPG",
+        destinationAbsolutePath: "/tmp/pc-ui/测试-京都旅行/JPG/DSCF0001.JPG",
+        sourceSizeBytes: 120_000,
+        sourceMtimeNs: 1,
+        action: "move",
+        groupIndex: 0,
+      },
+    ],
+    message: "将把 1 个文件原地移动到相册内的 JPG/RAW 子目录。",
+  };
+}
+
+function organizeResult(): OrganizeExecuteResponse {
+  const operation: OperationDetail = {
+    id: "op-organize",
+    type: "organize",
+    status: "success",
+    albumId: "a1",
+    albumName: "测试-京都旅行",
+    parentOperationId: null,
+    requestedAt: NOW,
+    startedAt: NOW,
+    finishedAt: NOW,
+    requestedPhotoCount: 1,
+    requestedFileCount: 1,
+    successFileCount: 1,
+    skippedFileCount: 0,
+    failedFileCount: 0,
+    conflictFileCount: 0,
+    errorSummary: null,
+    progress: null,
+    restoredAt: null,
+    restoreOperationId: null,
+    canRestore: true,
+    requestSnapshot: null,
+    createdAt: NOW,
+    items: [
+      {
+        id: "organize-item-1",
+        operationId: "op-organize",
+        photoGroupId: "p1",
+        assetId: "p1-jpg",
+        displayName: "DSCF0001",
+        sourceRelativePath: "DSCF0001.JPG",
+        destinationPath: "/tmp/pc-ui/测试-京都旅行/JPG/DSCF0001.JPG",
+        sourceSizeBytes: 120_000,
+        sourceMtimeNs: 1,
+        contentSha256: null,
+        result: "success",
+        errorCode: null,
+        errorMessage: null,
+        groupIndex: 0,
+      },
+    ],
+  };
+  return {
+    operation,
+    summary: organizePreflight().summary,
+    blockers: [],
+    idempotentReplay: false,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   photos = [
@@ -308,6 +404,8 @@ beforeEach(() => {
   } satisfies CleanupPreflight);
   apiMock.cleanupExecute.mockResolvedValue(cleanupResult());
   apiMock.restoreOperation.mockResolvedValue(restoreResult());
+  apiMock.organizePreflight.mockResolvedValue(organizePreflight());
+  apiMock.organizeExecute.mockResolvedValue(organizeResult());
   apiMock.exportPreflight.mockResolvedValue({
     albumId: "a1",
     token: "export-token",
@@ -477,6 +575,29 @@ describe("CullerPage 键盘与状态操作", () => {
         expect.objectContaining({ selectionStatus: "selected" }),
       );
     });
+  });
+
+  it("原地整理需要输入相册名，成功后展示撤销入口", async () => {
+    renderCuller();
+    await waitForFirstPhoto();
+
+    fireEvent.click(screen.getByTestId("organize-button"));
+    await screen.findByTestId("organize-confirm-input");
+    const confirm = screen.getByTestId("organize-confirm");
+    expect(confirm).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId("organize-confirm-input"), {
+      target: { value: "测试-京都旅行" },
+    });
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+
+    await screen.findByTestId("organize-result");
+    expect(apiMock.organizeExecute).toHaveBeenCalledWith(
+      "a1",
+      expect.objectContaining({ preflightToken: "organize-token" }),
+    );
+    expect(screen.getByTestId("organize-undo")).toBeInTheDocument();
   });
 });
 

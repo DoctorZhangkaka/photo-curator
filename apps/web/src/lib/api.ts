@@ -19,7 +19,13 @@ export type FormFilter = "all" | FormKind;
 export type IssueFilter = "all" | "pairing_conflict" | "missing" | "export_conflict";
 export type PresenceStatus = "present" | "missing";
 export type PreviewStatus = "pending" | "ok" | "failed" | "unavailable";
-export type OperationType = "scan" | "cleanup" | "restore" | "export";
+export type OperationType =
+  | "scan"
+  | "cleanup"
+  | "restore"
+  | "export"
+  | "organize"
+  | "organize_undo";
 export type OperationStatus =
   | "preflight"
   | "executing"
@@ -291,6 +297,61 @@ export interface CleanupExecuteResponse {
   idempotentReplay: boolean;
   groupSummary?: CleanupGroupSummary;
   seriousErrors?: CleanupSeriousError[];
+}
+
+export interface OrganizeSummary {
+  photoCount: number;
+  fileCount: number;
+  moveCount: number;
+  skipCount: number;
+  jpgCount: number;
+  rawCount: number;
+  totalBytes: number;
+}
+
+export interface OrganizeEntry {
+  assetId: string;
+  groupId: string;
+  displayName: string;
+  kind: "jpg" | "raw";
+  extension: string;
+  originalFilename: string;
+  sourceRelativePath: string;
+  destinationRelativePath: string;
+  destinationAbsolutePath: string;
+  sourceSizeBytes: number;
+  sourceMtimeNs: number;
+  action: "move" | "skip";
+  groupIndex: number;
+}
+
+export interface OrganizeBlocker {
+  code: string;
+  message: string;
+  groupId?: string | null;
+  displayName?: string | null;
+  relativePath?: string | null;
+  destinationRelativePath?: string | null;
+}
+
+export interface OrganizePreflight {
+  albumId: string;
+  albumName: string;
+  token: string | null;
+  expiresAt: string | null;
+  operationId: string | null;
+  summary: OrganizeSummary;
+  blocked: boolean;
+  blockers: OrganizeBlocker[];
+  entries: OrganizeEntry[];
+  message: string;
+}
+
+export interface OrganizeExecuteResponse {
+  operation: OperationDetail;
+  summary: OrganizeSummary | null;
+  blockers: OrganizeBlocker[];
+  idempotentReplay: boolean;
 }
 
 export interface OperationItem {
@@ -663,6 +724,17 @@ export const api = {
     request<ExportPreflight>(`/api/albums/${encodeURIComponent(albumId)}/exports/preflight`, { method: "POST" }),
   startExport: (albumId: string, payload: { preflightToken: string; idempotencyKey: string }) =>
     request<ExportStartResponse>(`/api/albums/${encodeURIComponent(albumId)}/exports`, {
+      method: "POST",
+      body: payload,
+    }),
+
+  // 原地整理 JPG/RAW
+  organizePreflight: (albumId: string) =>
+    request<OrganizePreflight>(`/api/albums/${encodeURIComponent(albumId)}/organize/preflight`, {
+      method: "POST",
+    }),
+  organizeExecute: (albumId: string, payload: { preflightToken: string; idempotencyKey: string }) =>
+    request<OrganizeExecuteResponse>(`/api/albums/${encodeURIComponent(albumId)}/organize/execute`, {
       method: "POST",
       body: payload,
     }),

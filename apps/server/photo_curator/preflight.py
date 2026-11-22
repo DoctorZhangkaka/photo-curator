@@ -9,7 +9,7 @@ import secrets
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from .constants import PREFLIGHT_CLEANUP, PREFLIGHT_EXPORT
+from .constants import PREFLIGHT_CLEANUP, PREFLIGHT_EXPORT, PREFLIGHT_ORGANIZE
 from .errors import ApiError, ErrorCode
 from .models import PreflightToken
 from .natural import is_expired, iso_after, utcnow_iso
@@ -28,7 +28,7 @@ def issue_preflight(
     payload: dict,
     ttl_seconds: int,
 ) -> tuple[str, str]:
-    if kind not in {PREFLIGHT_CLEANUP, PREFLIGHT_EXPORT}:
+    if kind not in {PREFLIGHT_CLEANUP, PREFLIGHT_EXPORT, PREFLIGHT_ORGANIZE}:
         raise ValueError(f"unknown preflight kind: {kind}")
     raw = secrets.token_urlsafe(32)
     expires_at = iso_after(ttl_seconds)
