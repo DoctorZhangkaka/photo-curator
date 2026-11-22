@@ -322,6 +322,7 @@ export function PhotoViewer({
   }
 
   const zoomLabel = zoomMode === "fit" ? "适应" : zoomMode === "actual" ? "100%" : `${zoomPercent}%`;
+  const controlSize = fullscreen ? "lg" : "sm";
 
   return (
     <div ref={rootRef} className="flex min-h-0 flex-1 flex-col bg-[#060607]">
@@ -455,9 +456,12 @@ export function PhotoViewer({
               aria-keyshortcuts="ArrowLeft"
               onClick={onPrevious}
               disabled={!canPrevious}
-              className="absolute left-3 top-1/2 z-10 flex h-11 w-9 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.12] bg-ink-950/65 text-ink-200 opacity-45 backdrop-blur-md transition-all duration-150 hover:border-white/25 hover:bg-ink-900/90 hover:text-white group-hover/stage:opacity-100 disabled:pointer-events-none disabled:opacity-15"
+              className={cx(
+                "absolute left-3 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.12] bg-ink-950/65 text-ink-200 opacity-45 backdrop-blur-md transition-all duration-150 hover:border-white/25 hover:bg-ink-900/90 hover:text-white group-hover/stage:opacity-100 disabled:pointer-events-none disabled:opacity-15",
+                fullscreen ? "h-16 w-14" : "h-11 w-9",
+              )}
             >
-              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              <ChevronLeft className={fullscreen ? "h-7 w-7" : "h-5 w-5"} aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -465,21 +469,29 @@ export function PhotoViewer({
               aria-keyshortcuts="ArrowRight"
               onClick={onNext}
               disabled={!canNext}
-              className="absolute right-3 top-1/2 z-10 flex h-11 w-9 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.12] bg-ink-950/65 text-ink-200 opacity-45 backdrop-blur-md transition-all duration-150 hover:border-white/25 hover:bg-ink-900/90 hover:text-white group-hover/stage:opacity-100 disabled:pointer-events-none disabled:opacity-15"
+              className={cx(
+                "absolute right-3 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.12] bg-ink-950/65 text-ink-200 opacity-45 backdrop-blur-md transition-all duration-150 hover:border-white/25 hover:bg-ink-900/90 hover:text-white group-hover/stage:opacity-100 disabled:pointer-events-none disabled:opacity-15",
+                fullscreen ? "h-16 w-14" : "h-11 w-9",
+              )}
             >
-              <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              <ChevronRight className={fullscreen ? "h-7 w-7" : "h-5 w-5"} aria-hidden="true" />
             </button>
           </>
         ) : null}
       </div>
 
       {/* 暗房硬件操控台式底部工具栏 */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t border-white/[0.08] bg-ink-900 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-3.5">
+      <div
+        className={cx(
+          "flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t border-white/[0.08] bg-ink-900 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-3.5",
+          fullscreen && "gap-x-4 py-3",
+        )}
+      >
         {/* 选片核心操作组 */}
         <div className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-ink-950/65 p-0.5">
           <Button
             variant={photo?.isSelected ? "primary" : "ghost"}
-            size="sm"
+            size={controlSize}
             icon={Star}
             data-testid="select-button"
             aria-pressed={photo?.isSelected ?? false}
@@ -493,7 +505,7 @@ export function PhotoViewer({
           </Button>
           <Button
             variant={photo?.isPendingDelete ? "danger" : "ghost"}
-            size="sm"
+            size={controlSize}
             icon={Trash2}
             data-testid="pending-delete-button"
             aria-pressed={photo?.isPendingDelete ?? false}
@@ -508,7 +520,7 @@ export function PhotoViewer({
           <span className="mx-0.5 h-4 w-px bg-white/[0.08]" aria-hidden="true" />
           <Button
             variant="ghost"
-            size="sm"
+            size={controlSize}
             icon={photo?.isViewed ? Eye : EyeOff}
             aria-keyshortcuts="U"
             aria-pressed={photo?.isViewed ?? false}
@@ -527,7 +539,7 @@ export function PhotoViewer({
             label={playing ? "暂停自动播放 (空格)" : "自动播放 (空格)"}
             icon={playing ? Pause : Play}
             variant="ghost"
-            size="sm"
+            size={controlSize}
             active={playing}
             aria-keyshortcuts="Space"
             onClick={onTogglePlayback}
@@ -542,7 +554,10 @@ export function PhotoViewer({
               if (value === 2 || value === 3 || value === 5 || value === 10) onAutoplayIntervalChange(value);
             }}
             wrapperClassName="[&>span:first-child]:hidden"
-            className="h-6 min-w-[66px] border-0 bg-transparent shadow-none"
+            className={cx(
+              "border-0 bg-transparent shadow-none",
+              fullscreen ? "h-9 min-w-[84px] text-sm" : "h-6 min-w-[66px]",
+            )}
           >
             <option value="2">2 秒</option>
             <option value="3">3 秒</option>
@@ -556,7 +571,7 @@ export function PhotoViewer({
           <div className="flex items-center gap-0.5 rounded-md border border-white/[0.06] bg-ink-950/65 p-0.5">
             <Button
               variant={zoomMode === "fit" ? "secondary" : "ghost"}
-              size="sm"
+              size={controlSize}
               disabled={!photo}
               title="适应屏幕"
               aria-pressed={zoomMode === "fit"}
@@ -567,7 +582,7 @@ export function PhotoViewer({
             </Button>
             <Button
               variant={zoomMode === "actual" ? "secondary" : "ghost"}
-              size="sm"
+              size={controlSize}
               disabled={!photo}
               title="以 100% 查看（使用原图预览）"
               aria-pressed={zoomMode === "actual"}
@@ -578,22 +593,23 @@ export function PhotoViewer({
               100%
             </Button>
             <span className="mx-0.5 h-4 w-px bg-white/[0.08]" aria-hidden="true" />
-            <IconButton label="缩小" icon={ZoomOut} size="sm" disabled={!photo || zoom <= 1.01} onClick={handleZoomOut} />
-            <IconButton label="放大" icon={ZoomIn} size="sm" disabled={!photo} onClick={handleZoomIn} />
+            <IconButton label="缩小" icon={ZoomOut} size={controlSize} disabled={!photo || zoom <= 1.01} onClick={handleZoomOut} />
+            <IconButton label="放大" icon={ZoomIn} size={controlSize} disabled={!photo} onClick={handleZoomIn} />
           </div>
 
           <div className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-ink-950/65 p-0.5">
             <IconButton
               label={fullscreen ? "退出全屏 (Esc) " : "全屏查看"}
               icon={fullscreen ? Minimize2 : Maximize2}
-              size="sm"
+              size={controlSize}
+              data-testid="fullscreen-button"
               aria-keyshortcuts="Escape"
               onClick={() => void toggleFullscreen()}
             />
             <IconButton
               label={infoOpen ? "隐藏照片信息 (I) " : "显示照片信息 (I) "}
               icon={infoOpen ? PanelRightClose : PanelRightOpen}
-              size="sm"
+              size={controlSize}
               active={infoOpen}
               aria-keyshortcuts="I"
               data-testid="info-button"
