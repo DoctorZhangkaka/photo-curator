@@ -127,7 +127,7 @@ export function InfoPanel({
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-ink-950/50 px-3.5">
         <div className="flex items-center gap-2">
           <h2 className="text-[11px] font-semibold tracking-[0.06em] text-ink-200">照片信息</h2>
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-500">INSPECTOR</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-500">信息面板</span>
         </div>
         <IconButton label="隐藏照片信息 (I) " icon={PanelRightClose} size="sm" onClick={onToggleInfo} />
       </div>
@@ -303,7 +303,7 @@ export function InfoPanel({
           ) : null}
         </InfoSection>
 
-        <InfoSection title="EXIF" hint="METADATA">
+        <InfoSection title="EXIF" hint="元数据">
           {detailLoading ? (
             <div className="space-y-2" aria-label="正在读取 EXIF">
               {[0, 1, 2, 3].map((row) => (

@@ -25,7 +25,7 @@ export function AppShell() {
             <div className="flex items-baseline gap-2">
               <span className="text-[13px] font-semibold tracking-[-0.015em] text-ink-100">相册精选助手</span>
               <span className="hidden font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-ink-500 sm:inline">
-                DARKROOM
+                暗房
               </span>
             </div>
           </Link>
@@ -84,7 +84,7 @@ export function AppShell() {
           本地单用户 · 照片仅在本地处理，不会上传至第三方服务
         </span>
         <span className="font-mono uppercase tracking-[0.08em] text-ink-600">
-          {location.pathname === "/" ? "CATALOG / LIBRARY" : location.pathname}
+          {location.pathname === "/" ? "相册库" : location.pathname}
         </span>
       </footer>
     </div>

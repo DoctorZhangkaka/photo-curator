@@ -321,7 +321,7 @@ export function PhotoViewer({
     }
   }
 
-  const zoomLabel = zoomMode === "fit" ? "FIT" : zoomMode === "actual" ? "100%" : `${zoomPercent}%`;
+  const zoomLabel = zoomMode === "fit" ? "适应" : zoomMode === "actual" ? "100%" : `${zoomPercent}%`;
 
   return (
     <div ref={rootRef} className="flex min-h-0 flex-1 flex-col bg-[#060607]">

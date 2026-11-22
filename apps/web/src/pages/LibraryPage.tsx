@@ -79,7 +79,7 @@ function AlbumCard({
               <Images className="h-6 w-6 text-ink-600" aria-hidden="true" />
             )}
             <span className="font-mono text-[10px] tracking-[0.06em] text-ink-500">
-              {album.counts.total === 0 ? "EMPTY ROLL" : "NO PREVIEW"}
+              {album.counts.total === 0 ? "空相册" : "暂无预览"}
             </span>
           </div>
         )}
@@ -323,7 +323,7 @@ export default function LibraryPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.06] pb-5">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-accent-400/85">
-            <FolderOpen className="h-3 w-3" aria-hidden="true" /> LOCAL CATALOG
+            <FolderOpen className="h-3 w-3" aria-hidden="true" /> 本地图库
           </p>
           <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-ink-100 sm:text-[28px]">相册库</h1>
           <p className="mt-1.5 text-xs leading-relaxed text-ink-400">

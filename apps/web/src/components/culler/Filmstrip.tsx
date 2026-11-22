@@ -105,7 +105,7 @@ export function Filmstrip({
 
       <div className="flex items-center justify-between gap-2 bg-ink-900/70 px-3 py-1 text-[10px] text-ink-500">
         <span className="flex items-center gap-2 font-mono tabular-nums tracking-[0.04em]">
-          <span className="uppercase text-ink-400">FILMSTRIP</span>
+          <span className="uppercase text-ink-400">胶片栏</span>
           <span className="text-ink-700">·</span>
           <span>
             已载入 {photos.length} / {total} 张
