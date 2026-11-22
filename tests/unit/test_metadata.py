@@ -45,3 +45,58 @@ def test_read_jpg_metadata_returns_expected_fields(tmp_path):
     assert metadata["height"] == 60
     assert metadata["aperture"] == 1.4
     assert metadata["iso"] == 400
+
+
+def test_parse_image_size_variants():
+    from photo_curator.metadata import _parse_image_size
+
+    assert _parse_image_size("6240 4160") == (6240, 4160)
+    assert _parse_image_size("6240x4160") == (6240, 4160)
+    assert _parse_image_size([6240, 4160]) == (6240, 4160)
+    assert _parse_image_size("bad") is None
+    assert _parse_image_size(None) is None
+
+
+def test_raw_metadata_batch_prefers_composite_image_size(monkeypatch, tmp_path):
+    import json
+    import subprocess
+
+    from photo_curator.metadata import read_raw_metadata_batch
+
+    sample = tmp_path / "A.RAF"
+    sample.write_bytes(b"fake")
+    payload = [
+        {
+            "SourceFile": str(sample),
+            "DateTimeOriginal": "2024:05:04 14:12:15",
+            "Make": "FUJIFILM",
+            "Model": "X-S20",
+            "LensModel": "XF56mmF1.2 R\x00\x00",
+            "FocalLength": 56,
+            "FNumber": 1.2,
+            "ExposureTime": 0.00025,
+            "ISO": 160,
+            "ImageWidth": 4416,
+            "ImageHeight": 2944,
+            "ImageSize": "6240 4160",
+            "Orientation": 8,
+        }
+    ]
+    commands = []
+
+    class Completed:
+        stdout = json.dumps(payload)
+        returncode = 0
+
+    def fake_run(command, **kwargs):
+        commands.append(command)
+        return Completed()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    result = read_raw_metadata_batch([sample], "/bin/echo")
+    metadata = result[str(sample.resolve())]
+    assert metadata["width"] == 6240
+    assert metadata["height"] == 4160
+    assert metadata["lensModel"] == "XF56mmF1.2 R"
+    assert metadata["exposureTime"] == "1/4000"
+    assert "-ImageSize" in commands[0]
