@@ -145,4 +145,13 @@ test("排序保留当前照片、过滤、聚焦控件时不触发快捷键", as
 
   // 自动播放按钮存在，且不会越过末尾循环。
   await expect(page.getByRole("button", { name: /播放|暂停/ }).first()).toBeVisible();
+
+  // 全屏沉浸模式下操作按钮应明显放大，且仍可继续标记。
+  const normalBox = await selectButton.boundingBox();
+  await page.getByTestId("fullscreen-button").click();
+  await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+  const fullscreenBox = await selectButton.boundingBox();
+  expect(fullscreenBox?.height ?? 0).toBeGreaterThan((normalBox?.height ?? 0) + 6);
+  await page.keyboard.press("Escape");
+  await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
 });

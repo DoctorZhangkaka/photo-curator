@@ -28,6 +28,8 @@
 | ![操作记录](docs/images/operations.png) | ![异常中心](docs/images/issues.png) |
 | **清理缩略图悬浮预览** | **窄窗口布局（480px）** |
 | ![缩略图悬浮预览](docs/images/darkroom-cleanup-hover.png) | ![窄窗口](docs/images/darkroom-culler-480.png) |
+| **全屏沉浸操作（大按钮）** | |
+| ![全屏操作](docs/images/fullscreen.png) | |
 
 界面采用暗房（Darkroom）主题：炭黑与黄铜色、灯箱式相册封面、单行工作台顶栏；装饰性小标签已全部中文化。截图使用 `/tmp` 下由脚本生成的测试相册与合成图片，不包含任何私人照片。
 

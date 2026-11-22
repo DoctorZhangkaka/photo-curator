@@ -64,6 +64,9 @@
   .btn-sm {
     @apply h-7 px-2.5 text-[11px];
   }
+  .btn-lg {
+    @apply h-10 gap-2 px-4 text-[13px];
+  }
   .btn-primary {
     @apply border-accent-300/30 bg-accent-500 text-ink-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] hover:bg-accent-400 active:bg-accent-600;
   }

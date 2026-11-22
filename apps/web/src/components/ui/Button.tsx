@@ -3,7 +3,7 @@ import { Loader2, type LucideIcon } from "lucide-react";
 import { cx } from "../../lib/cx";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-export type ButtonSize = "sm" | "md";
+export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: "btn-primary",
@@ -15,6 +15,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   sm: "btn-sm",
   md: "btn-md",
+  lg: "btn-lg",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -45,9 +46,15 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <Loader2 className={cx("shrink-0 animate-spin", size === "sm" ? "h-3.5 w-3.5" : "h-3.5 w-3.5")} aria-hidden="true" />
+        <Loader2
+          className={cx("shrink-0 animate-spin", size === "lg" ? "h-4 w-4" : "h-3.5 w-3.5")}
+          aria-hidden="true"
+        />
       ) : Icon ? (
-        <Icon className={cx("shrink-0", size === "sm" ? "h-3.5 w-3.5" : "h-3.5 w-3.5")} aria-hidden="true" />
+        <Icon
+          className={cx("shrink-0", size === "lg" ? "h-4 w-4" : "h-3.5 w-3.5")}
+          aria-hidden="true"
+        />
       ) : null}
       {children}
     </button>
@@ -59,7 +66,7 @@ interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
   icon: LucideIcon;
   variant?: "ghost" | "secondary" | "danger";
   active?: boolean;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
 }
 
 export function IconButton({
@@ -82,7 +89,7 @@ export function IconButton({
         "inline-flex shrink-0 items-center justify-center rounded-md border transition-all duration-150",
         "focus-visible:outline focus-visible:outline-[1.5px] focus-visible:outline-offset-2 focus-visible:outline-accent-400",
         "active:translate-y-[0.5px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-35",
-        size === "sm" ? "h-7 w-7" : "h-8 w-8",
+        size === "sm" ? "h-7 w-7" : size === "md" ? "h-8 w-8" : "h-10 w-10",
         variant === "ghost" && "border-transparent text-ink-400 hover:bg-white/[0.06] hover:text-ink-100",
         variant === "secondary" &&
           "border-white/[0.09] bg-ink-800/90 text-ink-200 shadow-darkroom-control hover:border-white/[0.16] hover:bg-ink-700/90 hover:text-white",
@@ -93,7 +100,10 @@ export function IconButton({
       )}
       {...props}
     >
-      <Icon className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} aria-hidden="true" />
+      <Icon
+        className={size === "sm" ? "h-3.5 w-3.5" : size === "md" ? "h-4 w-4" : "h-[18px] w-[18px]"}
+        aria-hidden="true"
+      />
     </button>
   );
 }
