@@ -65,6 +65,7 @@ export function OrganizeDialog({
   const [result, setResult] = useState<OrganizeExecuteResponse | null>(null);
   const [starting, setStarting] = useState(false);
   const [confirmation, setConfirmation] = useState("");
+  const [keepBackup, setKeepBackup] = useState(true);
   const [restoreError, setRestoreError] = useState<unknown>(null);
   const [restoreResult, setRestoreResult] = useState<RestoreResponse | null>(null);
   const [restoreArmed, setRestoreArmed] = useState(false);
@@ -85,7 +86,7 @@ export function OrganizeDialog({
     setLoading(true);
     onPauseAutoplay();
     api
-      .organizePreflight(albumId)
+      .organizePreflight(albumId, { keepBackup })
       .then((payload) => {
         if (!cancelled) setPreflight(payload);
       })
@@ -98,8 +99,8 @@ export function OrganizeDialog({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 打开时只预检一次
-  }, [open, albumId, reloadKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 打开或切换备份选项时重新预检
+  }, [open, albumId, reloadKey, keepBackup]);
 
   async function handleConfirm() {
     if (!preflight?.token || confirmation !== (albumName ?? "")) return;
@@ -188,7 +189,7 @@ export function OrganizeDialog({
       <p className="text-[10px] leading-relaxed text-ink-500">
         {result
           ? "移动的是源文件；操作记录已写入本地数据库。"
-          : "这是移动源文件，不是复制到精选目录。目标已存在时会拒绝执行。"}
+          : "这是移动源文件，不是复制到精选目录。勾选备份后，原相册副本会保留到人工确认并删除为止。"}
       </p>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="secondary" data-testid="organize-cancel" onClick={onClose} disabled={starting || restoreMutation.isPending}>
@@ -299,6 +300,25 @@ export function OrganizeDialog({
             </div>
           </div>
 
+          <label className="flex items-start gap-2 rounded-lg border border-white/[0.07] bg-ink-850 px-3 py-2.5 text-[11px] leading-relaxed text-ink-300">
+            <input
+              type="checkbox"
+              data-testid="organize-keep-backup"
+              checked={keepBackup}
+              onChange={(event) => {
+                setKeepBackup(event.target.checked);
+                setConfirmation("");
+              }}
+              className="mt-0.5 h-3.5 w-3.5 accent-amber-400"
+            />
+            <span>
+              <span className="font-medium text-ink-100">先创建完整备份（推荐）</span>
+              <span className="mt-0.5 block text-ink-500">
+                在相册旁创建「{albumName ?? "相册名"} 副本」，复制原相册全部文件并标记为不扫描；人工确认新结构后再手动删除副本。需要额外磁盘空间。
+              </span>
+            </span>
+          </label>
+
           <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { label: "逻辑照片", value: `${preflight.summary.photoCount} 张` },
@@ -331,6 +351,21 @@ export function OrganizeDialog({
           <div className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs leading-relaxed text-ink-300">
             {preflight.message}
           </div>
+
+          {preflight.backup ? (
+            <div data-testid="organize-backup-plan" className="rounded-lg border border-amber-500/25 bg-amber-500/[0.05] px-3 py-2.5 text-[11px] leading-relaxed text-amber-100">
+              <p className="font-medium">完整备份：{preflight.backup.relativePath}</p>
+              <p className="mt-0.5 break-all font-mono text-[10px] text-amber-200/70">{preflight.backup.absolutePath}</p>
+              <p className="mt-1 text-ink-300">
+                备份 {preflight.backup.fileCount} 个文件，共 {formatBytes(preflight.backup.bytes)}；会写入扫描忽略标记，不会出现在相册库。
+                请在新结构确认无误后，到 Finder 手动删除这个副本。
+              </p>
+            </div>
+          ) : keepBackup ? (
+            <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.05] px-3 py-2.5 text-[11px] leading-relaxed text-amber-100">
+              当前无法创建备份（请查看阻止项）；可以取消勾选备份后继续，或先处理问题。
+            </div>
+          ) : null}
 
           {preflight.blockers.length > 0 ? (
             <section aria-label="整理阻止项" className="rounded-lg border border-red-500/25 bg-red-500/[0.05] px-3 py-2.5">
@@ -429,6 +464,15 @@ export function OrganizeDialog({
                 已就位 <span className="font-mono text-sky-300">{result.operation.skippedFileCount}</span> 个，
                 失败/冲突 <span className="font-mono text-red-300">{result.operation.failedFileCount + result.operation.conflictFileCount}</span> 个。
               </p>
+              {result.backup ? (
+                <div className="rounded border border-amber-500/25 bg-amber-500/[0.05] px-2.5 py-2 text-[11px] leading-relaxed text-amber-100">
+                  <p className="font-medium">原相册副本已保留</p>
+                  <p className="mt-0.5 break-all font-mono text-[10px] text-amber-200/70">{result.backup.absolutePath}</p>
+                  <p className="mt-1 text-ink-300">
+                    它已标记为不扫描。请先在应用和 Finder 中确认新结构无误，再手动删除该副本；撤销整理不会自动删除它。
+                  </p>
+                </div>
+              ) : null}
               {result.operation.errorSummary ? (
                 <p className="rounded border border-red-500/20 bg-red-500/[0.05] px-2.5 py-2 text-[11px] leading-relaxed text-red-200">
                   {result.operation.errorSummary}

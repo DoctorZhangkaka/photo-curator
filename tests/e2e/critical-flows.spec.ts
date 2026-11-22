@@ -184,6 +184,10 @@ test("原地整理 JPG/RAW：预检、二次确认、移动与撤销", async ({ 
   await expect.poll(() => fs.existsSync(path.join(portraitDir, "JPG", "DSC0003.JPG")), { timeout: 10_000 }).toBe(true);
   expect(fs.existsSync(path.join(portraitDir, "DSC0001.JPG"))).toBe(false);
   expect(fs.existsSync(path.join(portraitDir, "DSC0001.ARW"))).toBe(false);
+  const backupDir = path.join(photoRoot, "测试-人像约拍-客户A 副本");
+  expect(fs.existsSync(path.join(backupDir, ".photo-curator-ignore"))).toBe(true);
+  expect(fs.existsSync(path.join(backupDir, "DSC0001.JPG"))).toBe(true);
+  expect(fs.existsSync(path.join(backupDir, "DSC0001.ARW"))).toBe(true);
 
   await page.getByTestId("organize-undo").click();
   await page.getByTestId("organize-undo-confirm").click();
@@ -192,4 +196,5 @@ test("原地整理 JPG/RAW：预检、二次确认、移动与撤销", async ({ 
   await expect.poll(() => fs.existsSync(path.join(portraitDir, "DSC0001.ARW")), { timeout: 10_000 }).toBe(true);
   expect(fs.existsSync(path.join(portraitDir, "JPG"))).toBe(false);
   expect(fs.existsSync(path.join(portraitDir, "RAW"))).toBe(false);
+  expect(fs.existsSync(path.join(backupDir, "DSC0001.JPG"))).toBe(true);
 });

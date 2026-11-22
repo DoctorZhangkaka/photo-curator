@@ -273,6 +273,12 @@ function organizePreflight(): OrganizePreflight {
     },
     blocked: false,
     blockers: [],
+    backup: {
+      relativePath: "测试-京都旅行 副本",
+      absolutePath: "/tmp/pc-ui/测试-京都旅行 副本",
+      bytes: 120_000,
+      fileCount: 1,
+    },
     entries: [
       {
         assetId: "p1-jpg",
@@ -340,6 +346,7 @@ function organizeResult(): OrganizeExecuteResponse {
   return {
     operation,
     summary: organizePreflight().summary,
+    backup: organizePreflight().backup,
     blockers: [],
     idempotentReplay: false,
   };
@@ -583,6 +590,9 @@ describe("CullerPage 键盘与状态操作", () => {
 
     fireEvent.click(screen.getByTestId("organize-button"));
     await screen.findByTestId("organize-confirm-input");
+    expect(apiMock.organizePreflight).toHaveBeenCalledWith("a1", { keepBackup: true });
+    expect(screen.getByTestId("organize-keep-backup")).toBeChecked();
+    expect(screen.getByTestId("organize-backup-plan")).toHaveTextContent("测试-京都旅行 副本");
     const confirm = screen.getByTestId("organize-confirm");
     expect(confirm).toBeDisabled();
 

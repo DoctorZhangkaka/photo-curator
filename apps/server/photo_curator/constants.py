@@ -48,6 +48,8 @@ OP_TYPE_RESTORE = "restore"
 OP_TYPE_EXPORT = "export"
 OP_TYPE_ORGANIZE = "organize"
 OP_TYPE_ORGANIZE_ROLLBACK = "organize_undo"
+IGNORE_MARKER = ".photo-curator-ignore"
+
 OP_TYPES = (
     OP_TYPE_SCAN,
     OP_TYPE_CLEANUP,

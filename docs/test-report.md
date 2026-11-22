@@ -9,17 +9,17 @@
 
 | 检查项 | 命令 | 结果 |
 | --- | --- | --- |
-| 后端单元 + 集成 + 原生废纸篓 + 性能 | `.venv/bin/python -m pytest -q` | **135 passed**，1 warning，6.50s |
+| 后端单元 + 集成 + 原生废纸篓 + 性能 | `.venv/bin/python -m pytest -q` | **136 passed**，1 warning，6.50s |
 | 后端原生 macOS 废纸篓专项 | `.venv/bin/python -m pytest tests/integration/test_trash_macos.py -v` | **2 passed**（真实 `NSFileManager`，夹具已恢复并清理） |
 | 大相册性能 | `.venv/bin/python -m pytest tests/performance -q -s` | **1 passed**：扫描 1000 张逻辑照片 **0.71s**，首屏 200 张 **0.010s**，遍历全部 5 页 **0.04s** |
 | 前端类型检查 | `npm run typecheck` | **通过**（TypeScript strict，`tsc -b`） |
 | 前端单元/交互测试 | `npm test` | **19 passed**（Vitest 5.1.1，3 个测试文件） |
-| 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 527.46 kB（gzip 155.07 kB），CSS 49.09 kB（gzip 9.21 kB） |
+| 前端生产构建 | `npm run build` | **成功**：`dist/assets/index-*.js` 529.77 kB（gzip 155.72 kB），CSS 49.17 kB（gzip 9.24 kB） |
 | 依赖安全审计 | `npm audit` | **0 vulnerabilities** |
 | GitHub Actions（macOS） | 全部 PR 与 `main` | **通过**（后端测试、类型检查、Vitest、生产构建） |
-| Playwright 端到端 | `npm run test:e2e` | **3 passed**，17.4s；含默认适应视图、清理缩略图、原地整理与撤销，使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
+| Playwright 端到端 | `npm run test:e2e` | **3 passed**，17.5s；含默认适应视图、清理缩略图、原地整理/备份与撤销，使用生产构建 + 临时夹具 + 真实 macOS 废纸篓并撤销 |
 
-测试数量构成：54 个单元测试（配对、自然排序、路径安全、EXIF 文本清理与 ExifTool 解析）、80 个集成/接口测试、1 个性能测试。
+测试数量构成：54 个单元测试（配对、自然排序、路径安全、EXIF 文本清理与 ExifTool 解析）、81 个集成/接口测试、1 个性能测试。
 
 唯一警告来自 FastAPI/Starlette 的测试客户端对 `httpx` 的弃用提示，不影响运行；没有测试被跳过。
 
@@ -90,6 +90,14 @@
 - `src/components/culler/Filmstrip.test.tsx`（2 个）：左右翻批按钮存在与禁用状态、点击右翻按视口宽度滚动（不是只移动一张）。
 - `src/components/ui/Modal.test.tsx`（3 个）：焦点陷阱、Esc 关闭、关闭后焦点恢复。
 
+0.5.0 整理前完整备份：
+
+- 整理弹窗默认勾选“先创建完整备份”，在相册旁创建 `<相册名> 副本`；复制全部文件并写入 `.photo-curator-ignore`，相册库不显示备份。
+- 预检展示备份路径、文件数、字节数并检查磁盘空间；备份目录已存在或空间不足时阻止。
+- 备份逐文件校验内容，失败则删除未完成备份并保持原相册不变；整理移动失败时保留备份。
+- 同一 Album/PhotoGroup/Asset ID 与状态不变，信息自动跟随；撤销整理不删除备份，需人工确认后手动删除。
+- 后端新增备份集成测试；Playwright 断言备份存在、扫描忽略、撤销后备份保留。
+
 0.4.0 原地整理 JPG/RAW：
 
 - 新增受控整理协议：重新扫描预检 → 逐文件源/目标清单与阻止项 → 输入相册名二次确认 → 移动 → 操作记录 → 可撤销。
@@ -130,9 +138,9 @@ tsc -b → 通过
 vite v7.3.8 building client environment for production...
 ✓ 1674 modules transformed.
 dist/index.html                   0.45 kB │ gzip:   0.31 kB
-dist/assets/index-BqcM3m9a.css   49.09 kB │ gzip:   9.21 kB
-dist/assets/index-BbXCCmct.js   527.46 kB │ gzip: 155.07 kB
-✓ built in 1.27s
+dist/assets/index-bRRbmXkr.css   49.17 kB │ gzip:   9.24 kB
+dist/assets/index-Cq2ECp-e.js   529.77 kB │ gzip: 155.72 kB
+✓ built in 1.22s
 ```
 
 ## 5. 端到端验收（Playwright，生产构建）
@@ -159,12 +167,12 @@ dist/assets/index-BbXCCmct.js   527.46 kB │ gzip: 155.07 kB
 4. `X`/按钮只改待删除状态，磁盘文件不变；再次点击取消。
 5. 自动播放控件存在。
 
-### 链路 3：原地整理（1 个测试，约 5.7s）
+### 链路 3：原地整理（含完整备份，1 个测试，约 5.7s）
 
 1. 打开无冲突的人像相册，进入“整理 JPG/RAW”。
 2. 预检显示移动/已就位数量与逐文件目标；确认按钮在输入相册名前禁用。
-3. 输入相册名、确认后，源文件移动到 `JPG/`、`RAW/`，磁盘上原平铺路径消失。
-4. 结果弹窗展示成功文件数；点击撤销并确认，文件移回原路径，本次新建的空目录被移除。
+3. 输入相册名、确认后，先创建 `<相册名> 副本` 完整备份（带扫描忽略标记），再把源文件移动到 `JPG/`、`RAW/`。
+4. 结果弹窗展示成功文件数与备份路径；点击撤销并确认，文件移回原路径，本次新建的空目录被移除，备份保留供人工确认/删除。
 
 ### 截图（真实运行，合成夹具）
 

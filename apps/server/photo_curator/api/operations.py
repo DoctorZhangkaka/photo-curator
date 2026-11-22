@@ -17,7 +17,7 @@ from ..issues import list_issues
 from ..models import Album, Asset, Operation, PhotoGroup, Setting
 from ..natural import utcnow_iso
 from ..operations import operation_items
-from ..schemas import PreflightExecuteRequest, SettingsPatch
+from ..schemas import OrganizePreflightRequest, PreflightExecuteRequest, SettingsPatch
 from ..serializers import operation_to_dict
 from .deps import get_context, get_session, require_album
 
@@ -86,11 +86,12 @@ def get_job(job_id: str, context: AppContext = Depends(get_context)) -> dict:
 @router.post("/albums/{album_id}/organize/preflight")
 def organize_preflight(
     album_id: str,
+    payload: OrganizePreflightRequest | None = None,
     context: AppContext = Depends(get_context),
     session: Session = Depends(get_session),
 ) -> dict:
     require_album(session, album_id)
-    return context.organize.preflight(album_id)
+    return context.organize.preflight(album_id, keep_backup=bool(payload and payload.keepBackup))
 
 
 @router.post("/albums/{album_id}/organize/execute")

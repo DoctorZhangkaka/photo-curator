@@ -309,6 +309,13 @@ export interface OrganizeSummary {
   totalBytes: number;
 }
 
+export interface OrganizeBackup {
+  relativePath: string;
+  absolutePath: string;
+  bytes: number;
+  fileCount: number;
+}
+
 export interface OrganizeEntry {
   assetId: string;
   groupId: string;
@@ -344,12 +351,14 @@ export interface OrganizePreflight {
   blocked: boolean;
   blockers: OrganizeBlocker[];
   entries: OrganizeEntry[];
+  backup: OrganizeBackup | null;
   message: string;
 }
 
 export interface OrganizeExecuteResponse {
   operation: OperationDetail;
   summary: OrganizeSummary | null;
+  backup: OrganizeBackup | null;
   blockers: OrganizeBlocker[];
   idempotentReplay: boolean;
 }
@@ -729,9 +738,10 @@ export const api = {
     }),
 
   // 原地整理 JPG/RAW
-  organizePreflight: (albumId: string) =>
+  organizePreflight: (albumId: string, options?: { keepBackup?: boolean }) =>
     request<OrganizePreflight>(`/api/albums/${encodeURIComponent(albumId)}/organize/preflight`, {
       method: "POST",
+      body: { keepBackup: options?.keepBackup ?? false },
     }),
   organizeExecute: (albumId: string, payload: { preflightToken: string; idempotencyKey: string }) =>
     request<OrganizeExecuteResponse>(`/api/albums/${encodeURIComponent(albumId)}/organize/execute`, {

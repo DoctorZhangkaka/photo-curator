@@ -28,8 +28,12 @@ def setup(open_client, tmp_path):
     return client, settings, app, root, album_dir, album, csrf
 
 
-def preflight(client, csrf, album_id):
-    response = client.post(f"/api/albums/{album_id}/organize/preflight", headers=csrf)
+def preflight(client, csrf, album_id, *, keep_backup: bool = False):
+    response = client.post(
+        f"/api/albums/{album_id}/organize/preflight",
+        json={"keepBackup": keep_backup},
+        headers=csrf,
+    )
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -171,3 +175,40 @@ def test_symlink_target_blocks_organize(open_client, tmp_path):
     assert plan["token"] is None
     assert (album_dir / "A.JPG").is_file()
     assert not (outside / "A.RAF").exists()
+
+def test_organize_with_full_backup_and_scanner_ignore(open_client, tmp_path):
+    client, _, _, root, album_dir, album, csrf = setup(open_client, tmp_path)
+    plan = preflight(client, csrf, album["id"], keep_backup=True)
+    assert plan["blocked"] is False
+    assert plan["backup"]
+    assert plan["backup"]["relativePath"] == "整理测试 副本"
+    assert not (root / "整理测试 副本").exists()
+
+    result = execute(client, csrf, album["id"], plan["token"]).json()
+    operation = result["operation"]
+    assert operation["status"] == "success"
+    assert result["backup"]["relativePath"] == "整理测试 副本"
+
+    backup = root / "整理测试 副本"
+    marker = backup / ".photo-curator-ignore"
+    assert marker.is_file()
+    assert (backup / "A.JPG").is_file()
+    assert (backup / "A.RAF").is_file()
+    assert (backup / "JPG" / "C.JPG").is_file()
+    assert (album_dir / "JPG" / "A.JPG").is_file()
+    assert (album_dir / "RAW" / "A.RAF").is_file()
+
+    # 备份带有扫描忽略标记，不应出现在相册库中。
+    names = [item["name"] for item in client.get("/api/albums").json()["albums"]]
+    assert "整理测试 副本" not in names
+
+    # 应用信息仍然存在，并且资产路径已指向新结构。
+    photo = photo_by_name(client, album["id"], "A")
+    assert {asset["relativePath"] for asset in photo["assets"]} == {"JPG/A.JPG", "RAW/A.RAF"}
+
+    # 撤销整理会还原原路径，但不会自动删除人工备份。
+    rollback = client.post(f"/api/operations/{operation['id']}/restore", headers=csrf)
+    assert rollback.status_code == 200, rollback.text
+    assert (album_dir / "A.JPG").is_file()
+    assert (album_dir / "A.RAF").is_file()
+    assert backup.is_dir()

@@ -391,6 +391,14 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
 
 ### `POST /api/albums/{albumId}/organize/preflight`
 
+请求体（可选）：
+
+```json
+{ "keepBackup": true }
+```
+
+`keepBackup` 为 `true` 时，在相册旁创建 `<相册名> 副本` 的完整备份，并检查目标不存在、无符号链接、磁盘空间足够。响应中的 `backup` 为 `null` 表示未创建备份或备份不可用。
+
 ```json
 {
   "albumId": "uuid",
@@ -403,6 +411,12 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
     "skipCount": 3, "jpgCount": 8, "rawCount": 4, "totalBytes": 12345678
   },
   "blocked": false,
+  "backup": {
+    "relativePath": "2026-京都旅行 副本",
+    "absolutePath": "/.../相册/2026-京都旅行 副本",
+    "bytes": 12345678,
+    "fileCount": 42
+  },
   "blockers": [
     { "code": "PAIRING_CONFLICT | ASSET_MISSING | DESTINATION_CONFLICT | SOURCE_CHANGED", "message": "...", "groupId": "...", "displayName": "...", "relativePath": "...", "destinationRelativePath": "..." }
   ],
@@ -424,6 +438,7 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
 - 预检会先重新扫描相册；目标结构固定为 `<相册>/JPG/<原文件名>` 与 `<相册>/RAW/<原文件名>`。
 - 存在任何 `blockers` 时 `token` 为 `null`，整批不执行，不覆盖任何文件。
 - 已经处于正确位置、没有实际移动的文件记录为 `skip`。
+- 备份目录写入 `.photo-curator-ignore`，发现相册时跳过；备份不会出现在相册库。备份是完整复制，占用额外磁盘空间，需人工确认后手动删除。
 - 空文件/无移动时同样返回 `token: null`，`message` 说明无需整理。
 
 ### `POST /api/albums/{albumId}/organize/execute`
@@ -432,11 +447,12 @@ PATCH 可只传其中一个字段：`defaultSort`（`capture`/`filename`）、`a
 { "preflightToken": "...", "idempotencyKey": "uuid" }
 ```
 
-成功或失败返回 `operation`（类型 `organize`）、`summary`、`blockers`、`idempotentReplay`。逐文件 `result` 为 `success`、`skipped`、`failed`、`restored`；失败的整批执行会回滚已移动文件，`failed` 项保留错误。
+成功或失败返回 `operation`（类型 `organize`）、`summary`、`backup`、`blockers`、`idempotentReplay`。逐文件 `result` 为 `success`、`skipped`、`failed`、`restored`；失败的整批执行会回滚已移动文件，`failed` 项保留错误。`backup` 在成功时保留，撤销整理不会删除它。
 
 - 预检后源文件、目录或配对状态变化：`409 SOURCE_CHANGED`，整批不执行，操作记录标记失败。
 - 同一 `idempotencyKey` 重放返回原操作，不重复移动。
 - 移动使用 hard link + unlink，目标已存在时绝不覆盖；若文件系统不支持 hard link，回退 `rename` 前仍做目标存在性检查。
+- 备份复制失败会删除本次未完成的备份并保持原相册不变；移动失败会保留已完成的备份供人工恢复。
 
 ### `POST /api/operations/{operationId}/restore`
 
