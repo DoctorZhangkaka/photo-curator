@@ -15,7 +15,7 @@ interface FilmstripProps {
   onLoadMore: () => Promise<void> | void;
 }
 
-const ITEM_SIZE = 102;
+const ITEM_SIZE = 104;
 
 export function Filmstrip({
   photos,
@@ -99,28 +99,36 @@ export function Filmstrip({
   const virtualItems = virtualizer.getVirtualItems();
 
   return (
-    <section aria-label="胶片栏" className="shrink-0 border-t border-white/[0.07] bg-ink-900/95">
-      <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px] text-ink-500">
-        <span className="tabular-nums">
-          胶片栏 · 已载入 {photos.length} / {total} 张
+    <section aria-label="胶片栏" className="shrink-0 border-t border-white/[0.08] bg-ink-950">
+      {/* 极细 35mm 胶片齿孔装饰轨 */}
+      <div className="film-sprocket-rail h-[3px] w-full opacity-45" aria-hidden="true" />
+
+      <div className="flex items-center justify-between gap-2 bg-ink-900/70 px-3 py-1 text-[10px] text-ink-500">
+        <span className="flex items-center gap-2 font-mono tabular-nums tracking-[0.04em]">
+          <span className="uppercase text-ink-400">胶片栏</span>
+          <span className="text-ink-700">·</span>
+          <span>
+            已载入 {photos.length} / {total} 张
+          </span>
         </span>
         <div className="flex items-center gap-2">
           {hasNextPage ? (
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-ink-300 hover:bg-white/[0.06] hover:text-ink-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-ink-300 transition-colors hover:border-white/[0.16] hover:bg-white/[0.07] hover:text-ink-100 disabled:opacity-50"
               onClick={() => void onLoadMore()}
               disabled={isFetchingNextPage}
             >
-              {isFetchingNextPage ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
-              {isFetchingNextPage ? "载入中…" : "加载更多"}
+              {isFetchingNextPage ? <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" /> : null}
+              {isFetchingNextPage ? "载入中..." : "加载更多"}
             </button>
           ) : (
-            <span>全部照片已载入</span>
+            <span className="font-mono text-[10px] text-ink-600">全部照片已载入</span>
           )}
         </div>
       </div>
-      <div className="relative">
+
+      <div className="relative bg-[#080809]">
         <button
           type="button"
           aria-label="上一批缩略图"
@@ -128,9 +136,9 @@ export function Filmstrip({
           data-testid="filmstrip-prev-batch"
           disabled={!canPreviousBatch || batchLoading}
           onClick={() => void scrollBatch(-1)}
-          className="absolute left-1 top-1/2 z-20 flex h-16 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ink-950/80 text-ink-300 shadow-lg backdrop-blur-sm transition-colors hover:bg-ink-800 hover:text-white disabled:pointer-events-none disabled:opacity-20"
+          className="absolute left-1.5 top-1/2 z-20 flex h-14 w-6 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.12] bg-ink-950/88 text-ink-300 shadow-lg backdrop-blur-md transition-all hover:border-white/25 hover:bg-ink-800 hover:text-white disabled:pointer-events-none disabled:opacity-15"
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -139,112 +147,148 @@ export function Filmstrip({
           data-testid="filmstrip-next-batch"
           disabled={!canNextBatch || batchLoading}
           onClick={() => void scrollBatch(1)}
-          className="absolute right-1 top-1/2 z-20 flex h-16 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ink-950/80 text-ink-300 shadow-lg backdrop-blur-sm transition-colors hover:bg-ink-800 hover:text-white disabled:pointer-events-none disabled:opacity-20"
+          className="absolute right-1.5 top-1/2 z-20 flex h-14 w-6 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.12] bg-ink-950/88 text-ink-300 shadow-lg backdrop-blur-md transition-all hover:border-white/25 hover:bg-ink-800 hover:text-white disabled:pointer-events-none disabled:opacity-15"
         >
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
+
         <div
           ref={parentRef}
           data-testid="filmstrip"
           role="listbox"
           aria-label="照片胶片栏"
           aria-orientation="horizontal"
-          className="no-scrollbar h-[88px] overflow-x-auto overflow-y-hidden px-2 sm:h-[100px]"
+          className="no-scrollbar h-[92px] overflow-x-auto overflow-y-hidden px-3 sm:h-[104px]"
         >
-        <div className="relative h-full" style={{ width: `${virtualizer.getTotalSize()}px` }}>
-          {virtualItems.map((virtualItem) => {
-            const photo = photos[virtualItem.index];
-            if (!photo) return null;
-            const active = virtualItem.index === currentIndex;
-            const label = [
-              `第 ${virtualItem.index + 1} 张`,
-              photo.displayName,
-              VIEWED_LABELS[photo.viewedStatus],
-              SELECTION_LABELS[photo.selectionStatus],
-              photo.flags.pairingConflict ? "配对冲突" : "",
-              photo.flags.missingFile ? "文件缺失" : "",
-            ]
-              .filter(Boolean)
-              .join("，");
-            return (
-              <div
-                key={photo.id}
-                className="absolute left-0 top-0 h-full p-1.5"
-                style={{ width: `${virtualItem.size}px`, transform: `translateX(${virtualItem.start}px)` }}
-              >
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  aria-label={label}
-                  title={photo.displayName}
-                  data-testid="filmstrip-item"
-                  data-photo-id={photo.id}
-                  onClick={() => onSelect(virtualItem.index)}
-                  className={cx(
-                    "group relative block h-full w-full overflow-hidden rounded-lg border bg-black text-left transition-colors",
-                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-400",
-                    active
-                      ? "border-accent-500 ring-1 ring-accent-500/50"
-                      : "border-white/10 hover:border-white/30",
-                  )}
+          <div className="relative h-full" style={{ width: `${virtualizer.getTotalSize()}px` }}>
+            {virtualItems.map((virtualItem) => {
+              const photo = photos[virtualItem.index];
+              if (!photo) return null;
+              const active = virtualItem.index === currentIndex;
+              const frameNo = String(virtualItem.index + 1).padStart(2, "0");
+              const label = [
+                `第 ${virtualItem.index + 1} 张`,
+                photo.displayName,
+                VIEWED_LABELS[photo.viewedStatus],
+                SELECTION_LABELS[photo.selectionStatus],
+                photo.flags.pairingConflict ? "配对冲突" : "",
+                photo.flags.missingFile ? "文件缺失" : "",
+              ]
+                .filter(Boolean)
+                .join(", ");
+              return (
+                <div
+                  key={photo.id}
+                  className="absolute left-0 top-0 h-full px-1 py-2"
+                  style={{ width: `${virtualItem.size}px`, transform: `translateX(${virtualItem.start}px)` }}
                 >
-                  <ImageOff
-                    className="absolute inset-0 m-auto h-5 w-5 text-ink-600"
-                    aria-hidden="true"
-                  />
-                  <img
-                    src={photo.thumbnailUrl}
-                    alt={photo.displayName}
-                    loading="lazy"
-                    decoding="async"
-                    draggable={false}
-                    className="relative h-full w-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.style.opacity = "0";
-                    }}
-                  />
-                  {photo.isSelected || photo.isPendingDelete ? (
-                    <span
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    aria-label={label}
+                    title={photo.displayName}
+                    data-testid="filmstrip-item"
+                    data-photo-id={photo.id}
+                    onClick={() => onSelect(virtualItem.index)}
+                    className={cx(
+                      "group relative block h-full w-full overflow-hidden rounded-[6px] border bg-black text-left transition-all duration-150",
+                      "focus-visible:outline focus-visible:outline-[1.5px] focus-visible:outline-offset-1 focus-visible:outline-accent-400",
+                      active
+                        ? "border-accent-400 shadow-darkroom-glow"
+                        : photo.isPendingDelete
+                          ? "border-red-500/35 opacity-60 hover:opacity-95"
+                          : "border-white/[0.09] opacity-75 hover:border-white/30 hover:opacity-100",
+                    )}
+                  >
+                    <ImageOff
+                      className="absolute inset-0 m-auto h-4 w-4 text-ink-600"
+                      aria-hidden="true"
+                    />
+                    <img
+                      src={photo.thumbnailUrl}
+                      alt={photo.displayName}
+                      loading="lazy"
+                      decoding="async"
+                      draggable={false}
                       className={cx(
-                        "absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-md border backdrop-blur-sm",
-                        photo.isPendingDelete
-                          ? "border-red-400/40 bg-red-950/80 text-red-300"
-                          : "border-accent-400/40 bg-ink-950/80 text-accent-400",
+                        "relative h-full w-full object-cover transition-transform duration-300",
+                        !active && "group-hover:scale-[1.03]",
                       )}
-                    >
-                      {photo.isPendingDelete ? (
-                        <Trash2 className="h-3 w-3" aria-hidden="true" />
+                      onError={(event) => {
+                        event.currentTarget.style.opacity = "0";
+                      }}
+                    />
+
+                    {/* 左上角精选/待删标记 */}
+                    {photo.isSelected || photo.isPendingDelete ? (
+                      <span
+                        className={cx(
+                          "absolute left-1 top-1 flex h-4 w-4 items-center justify-center rounded-[4px] border backdrop-blur-md",
+                          photo.isPendingDelete
+                            ? "border-red-400/45 bg-red-950/85 text-red-300"
+                            : "border-accent-400/50 bg-ink-950/85 text-accent-300",
+                        )}
+                      >
+                        {photo.isPendingDelete ? (
+                          <Trash2 className="h-2.5 w-2.5" aria-hidden="true" />
+                        ) : (
+                          <Star className="h-2.5 w-2.5 fill-current" aria-hidden="true" />
+                        )}
+                      </span>
+                    ) : null}
+
+                    {/* 右上角冲突/缺失警示 */}
+                    {photo.flags.pairingConflict || photo.flags.missingFile ? (
+                      <span
+                        className={cx(
+                          "absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-[4px] border bg-ink-950/90 backdrop-blur-md",
+                          photo.flags.missingFile
+                            ? "border-red-400/45 text-red-300"
+                            : "border-amber-400/45 text-amber-300",
+                        )}
+                        title={photo.flags.missingFile ? "文件缺失" : "配对冲突"}
+                      >
+                        {photo.flags.missingFile ? (
+                          <FileX className="h-2.5 w-2.5" aria-hidden="true" />
+                        ) : (
+                          <AlertTriangle className="h-2.5 w-2.5" aria-hidden="true" />
+                        )}
+                      </span>
+                    ) : null}
+
+                    {/* 底部暗角 + 胶片帧号与未浏览指示点 */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent px-1.5 pb-1 pt-3">
+                      {!photo.isViewed ? (
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_5px_rgba(125,211,252,0.85)]"
+                          title="未浏览"
+                        />
                       ) : (
-                        <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                        <span />
                       )}
-                    </span>
-                  ) : null}
-                  {photo.flags.pairingConflict || photo.flags.missingFile ? (
-                    <span
-                      className={cx(
-                        "absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-md border bg-ink-950/85 backdrop-blur-sm",
-                        photo.flags.missingFile
-                          ? "border-red-400/40 text-red-300"
-                          : "border-amber-400/40 text-amber-300",
-                      )}
-                      title={photo.flags.missingFile ? "文件缺失" : "配对冲突"}
-                    >
-                      {photo.flags.missingFile ? (
-                        <FileX className="h-3 w-3" aria-hidden="true" />
-                      ) : (
-                        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                      )}
-                    </span>
-                  ) : null}
-                  {!photo.isViewed ? (
-                    <span className="absolute bottom-1 left-1 h-1.5 w-1.5 rounded-full bg-sky-300/90" title="未浏览" />
-                  ) : null}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                      <span
+                        className={cx(
+                          "font-mono text-[9px] tabular-nums leading-none",
+                          active ? "font-semibold text-accent-300" : "text-ink-300/80",
+                        )}
+                      >
+                        {frameNo}
+                      </span>
+                    </div>
+
+                    {/* 当前帧底部高光条 */}
+                    {active ? (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-accent-400"
+                      />
+                    ) : null}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

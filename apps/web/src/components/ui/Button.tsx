@@ -45,9 +45,9 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+        <Loader2 className={cx("shrink-0 animate-spin", size === "sm" ? "h-3.5 w-3.5" : "h-3.5 w-3.5")} aria-hidden="true" />
       ) : Icon ? (
-        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <Icon className={cx("shrink-0", size === "sm" ? "h-3.5 w-3.5" : "h-3.5 w-3.5")} aria-hidden="true" />
       ) : null}
       {children}
     </button>
@@ -79,14 +79,16 @@ export function IconButton({
       title={label}
       aria-pressed={active === undefined ? undefined : active}
       className={cx(
-        "inline-flex shrink-0 items-center justify-center rounded-lg border transition-colors",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400",
-        "disabled:cursor-not-allowed disabled:opacity-40",
-        size === "sm" ? "h-7 w-7" : "h-9 w-9",
-        variant === "ghost" && "border-transparent text-ink-300 hover:bg-white/[0.07] hover:text-ink-100",
-        variant === "secondary" && "border-white/10 bg-ink-800 text-ink-200 hover:bg-ink-700",
-        variant === "danger" && "border-red-500/25 bg-red-500/10 text-red-200 hover:bg-red-500/20",
-        active && "border-accent-500/40 bg-accent-500/10 text-accent-400",
+        "inline-flex shrink-0 items-center justify-center rounded-md border transition-all duration-150",
+        "focus-visible:outline focus-visible:outline-[1.5px] focus-visible:outline-offset-2 focus-visible:outline-accent-400",
+        "active:translate-y-[0.5px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-35",
+        size === "sm" ? "h-7 w-7" : "h-8 w-8",
+        variant === "ghost" && "border-transparent text-ink-400 hover:bg-white/[0.06] hover:text-ink-100",
+        variant === "secondary" &&
+          "border-white/[0.09] bg-ink-800/90 text-ink-200 shadow-darkroom-control hover:border-white/[0.16] hover:bg-ink-700/90 hover:text-white",
+        variant === "danger" &&
+          "border-red-400/25 bg-red-500/[0.11] text-red-200 hover:border-red-400/40 hover:bg-red-500/20",
+        active && "border-accent-500/45 bg-accent-500/15 text-accent-300 shadow-[inset_0_1px_0_rgba(241,205,120,0.18)]",
         className,
       )}
       {...props}

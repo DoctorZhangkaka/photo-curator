@@ -324,12 +324,12 @@ export function PhotoViewer({
   const zoomLabel = zoomMode === "fit" ? "适应" : zoomMode === "actual" ? "100%" : `${zoomPercent}%`;
 
   return (
-    <div ref={rootRef} className="flex min-h-0 flex-1 flex-col bg-black">
+    <div ref={rootRef} className="flex min-h-0 flex-1 flex-col bg-[#060607]">
       <div
         ref={viewportRef}
         data-viewport
         className={cx(
-          "relative flex min-h-[220px] flex-1 items-center justify-center overflow-hidden",
+          "group/stage darkroom-stage relative flex min-h-[220px] flex-1 items-center justify-center overflow-hidden p-2 sm:p-4",
           zoom > 1.01 && !dragging && "cursor-grab",
           dragging && "cursor-grabbing",
         )}
@@ -344,30 +344,28 @@ export function PhotoViewer({
         }}
         style={{ touchAction: zoom > 1.01 ? "none" : undefined }}
       >
+        {/* 顶部低干扰取景器状态条 */}
         {photo ? (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 p-2.5 sm:p-3">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <StatusChip tone="neutral" className="bg-black/55 backdrop-blur-sm">
-                <span data-testid="photo-counter" className="font-mono tabular-nums">
-                  {index + 1} / {total}
-                </span>
-              </StatusChip>
-              <span className="backdrop-blur-sm">
-                <ViewedChip status={photo.viewedStatus} />
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 p-2.5 sm:p-3.5">
+            <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-white/[0.08] bg-ink-950/70 px-2 py-1 backdrop-blur-md">
+              <span
+                data-testid="photo-counter"
+                className="pr-1 font-mono text-[11px] font-medium tabular-nums text-ink-200"
+              >
+                {index + 1} <span className="text-ink-500">/</span> {total}
               </span>
-              <span className="backdrop-blur-sm">
-                <SelectionChip status={photo.selectionStatus} />
-              </span>
-              <span className="backdrop-blur-sm">
-                <FormChip form={photo.form} />
-              </span>
-              <span className="backdrop-blur-sm">
-                <PhotoFlagChips photo={photo} />
-              </span>
+              <span className="h-3 w-px bg-white/[0.1]" aria-hidden="true" />
+              <ViewedChip status={photo.viewedStatus} />
+              <SelectionChip status={photo.selectionStatus} />
+              <FormChip form={photo.form} />
+              <PhotoFlagChips photo={photo} />
             </div>
             <div className="flex flex-col items-end gap-1">
               {markDisabled && markDisabledReason ? (
-                <StatusChip tone="warning" className="max-w-[260px] whitespace-normal bg-black/55 text-left backdrop-blur-sm">
+                <StatusChip
+                  tone="warning"
+                  className="max-w-[270px] whitespace-normal bg-ink-950/85 text-left backdrop-blur-md"
+                >
                   {markDisabledReason}
                 </StatusChip>
               ) : null}
@@ -381,9 +379,9 @@ export function PhotoViewer({
           <div
             role="alert"
             data-testid="viewer-error"
-            className="mx-4 flex max-w-md flex-col items-center rounded-xl border border-red-500/25 bg-red-950/30 px-6 py-8 text-center"
+            className="mx-4 flex max-w-md flex-col items-center rounded-[10px] border border-red-400/25 bg-red-950/25 px-6 py-8 text-center backdrop-blur-sm"
           >
-            <ImageOff className="h-8 w-8 text-red-400" aria-hidden="true" />
+            <ImageOff className="h-7 w-7 text-red-400" aria-hidden="true" />
             <p className="mt-3 text-sm font-medium text-red-200">文件缺失，无法显示预览</p>
             <p className="mt-1 text-xs leading-relaxed text-ink-400">
               数据库仍有这张照片的记录，但原文件已不在相册中。请重新扫描，或在异常中心查看缺失路径。
@@ -393,9 +391,9 @@ export function PhotoViewer({
           <div
             role="alert"
             data-testid="viewer-error"
-            className="mx-4 flex max-w-md flex-col items-center rounded-xl border border-red-500/25 bg-red-950/30 px-6 py-8 text-center"
+            className="mx-4 flex max-w-md flex-col items-center rounded-[10px] border border-red-400/25 bg-red-950/25 px-6 py-8 text-center backdrop-blur-sm"
           >
-            <ImageOff className="h-8 w-8 text-red-400" aria-hidden="true" />
+            <ImageOff className="h-7 w-7 text-red-400" aria-hidden="true" />
             <p className="mt-3 text-sm font-medium text-red-200">大图加载失败</p>
             <p className="mt-1 text-xs leading-relaxed text-ink-400">{loadError}</p>
             <Button variant="secondary" size="sm" icon={RotateCcw} className="mt-4" onClick={retryImage}>
@@ -406,8 +404,8 @@ export function PhotoViewer({
           <>
             {!loaded ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-8" aria-hidden="true">
-                <Skeleton className="h-2/3 w-2/3 max-w-3xl" />
-                <Spinner label="正在加载大图…" />
+                <Skeleton className="h-2/3 w-2/3 max-w-3xl opacity-40" />
+                <Spinner label="正在显影大图..." />
               </div>
             ) : null}
             <img
@@ -421,7 +419,7 @@ export function PhotoViewer({
               onLoad={handleImageLoad}
               onError={handleImageError}
               className={cx(
-                "relative max-h-full max-w-full select-none object-contain",
+                "relative max-h-full max-w-full select-none object-contain shadow-[0_18px_60px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06]",
                 loaded ? "opacity-100" : "opacity-0",
                 !dragging && "transition-[opacity] duration-200",
               )}
@@ -435,24 +433,29 @@ export function PhotoViewer({
 
         {photo ? (
           <>
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/75 via-black/20 to-transparent p-3 pt-10 sm:p-4">
+            {/* 底部低调照片标题与缩放遥测 */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/80 via-black/25 to-transparent px-3.5 pb-3 pt-12 sm:px-5 sm:pb-3.5">
               <div className="min-w-0">
-                <p className="truncate font-mono text-xs font-medium text-ink-100 sm:text-sm">{photo.displayName}</p>
-                <p className="mt-0.5 truncate text-[11px] text-ink-300">
+                <p className="truncate font-mono text-xs font-medium tracking-[0.01em] text-ink-100 sm:text-[13px]">
+                  {photo.displayName}
+                </p>
+                <p className="mt-0.5 truncate font-mono text-[10px] tabular-nums text-ink-400">
                   {formatCaptureTime(photo.captureTime)} · {photo.fileCount} 个文件 · {formatBytes(photo.totalBytes)}
                 </p>
               </div>
-              <span className="shrink-0 rounded-md bg-black/50 px-2 py-1 font-mono text-[11px] text-ink-300 backdrop-blur-sm">
+              <span className="shrink-0 rounded border border-white/[0.1] bg-ink-950/75 px-2 py-0.5 font-mono text-[10px] font-medium tabular-nums tracking-[0.06em] text-ink-200 backdrop-blur-md">
                 {zoomLabel}
               </span>
             </div>
+
+            {/* 左右翻张静音悬浮按钮（平时低存在感，悬停显影） */}
             <button
               type="button"
               aria-label="上一张"
               aria-keyshortcuts="ArrowLeft"
               onClick={onPrevious}
               disabled={!canPrevious}
-              className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-ink-200 backdrop-blur-sm transition-colors hover:bg-black/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
+              className="absolute left-3 top-1/2 z-10 flex h-11 w-9 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.12] bg-ink-950/65 text-ink-200 opacity-45 backdrop-blur-md transition-all duration-150 hover:border-white/25 hover:bg-ink-900/90 hover:text-white group-hover/stage:opacity-100 disabled:pointer-events-none disabled:opacity-15"
             >
               <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -462,7 +465,7 @@ export function PhotoViewer({
               aria-keyshortcuts="ArrowRight"
               onClick={onNext}
               disabled={!canNext}
-              className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-ink-200 backdrop-blur-sm transition-colors hover:bg-black/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
+              className="absolute right-3 top-1/2 z-10 flex h-11 w-9 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.12] bg-ink-950/65 text-ink-200 opacity-45 backdrop-blur-md transition-all duration-150 hover:border-white/25 hover:bg-ink-900/90 hover:text-white group-hover/stage:opacity-100 disabled:pointer-events-none disabled:opacity-15"
             >
               <ChevronRight className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -470,8 +473,10 @@ export function PhotoViewer({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t border-white/[0.07] bg-ink-900 px-2 py-2 sm:px-3">
-        <div className="flex items-center gap-1.5">
+      {/* 暗房硬件操控台式底部工具栏 */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t border-white/[0.08] bg-ink-900 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-3.5">
+        {/* 选片核心操作组 */}
+        <div className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-ink-950/65 p-0.5">
           <Button
             variant={photo?.isSelected ? "primary" : "ghost"}
             size="sm"
@@ -480,10 +485,11 @@ export function PhotoViewer({
             aria-pressed={photo?.isSelected ?? false}
             aria-keyshortcuts="F"
             disabled={!photo || markDisabled}
-            title={markDisabled ? markDisabledReason : "精选 / 取消精选（F）"}
+            title={markDisabled ? markDisabledReason : "精选 / 取消精选 (F)"}
             onClick={onToggleSelected}
           >
             精选
+            <kbd className={cx("hidden sm:inline-flex", photo?.isSelected ? "kbd-hint-dark" : "kbd-hint")}>F</kbd>
           </Button>
           <Button
             variant={photo?.isPendingDelete ? "danger" : "ghost"}
@@ -493,11 +499,13 @@ export function PhotoViewer({
             aria-pressed={photo?.isPendingDelete ?? false}
             aria-keyshortcuts="X Delete"
             disabled={!photo || markDisabled}
-            title={markDisabled ? markDisabledReason : "标记待删除 / 取消（X 或 Delete）"}
+            title={markDisabled ? markDisabledReason : "标记待删除 / 取消 (X 或 Delete)"}
             onClick={onTogglePendingDelete}
           >
             待删除
+            <kbd className="kbd-hint hidden sm:inline-flex">X</kbd>
           </Button>
+          <span className="mx-0.5 h-4 w-px bg-white/[0.08]" aria-hidden="true" />
           <Button
             variant="ghost"
             size="sm"
@@ -505,20 +513,21 @@ export function PhotoViewer({
             aria-keyshortcuts="U"
             aria-pressed={photo?.isViewed ?? false}
             disabled={!photo}
-            title="切换已浏览 / 未浏览（U）"
+            title="切换已浏览 / 未浏览 (U) "
             onClick={onToggleViewed}
           >
             {photo?.isViewed ? "已浏览" : "未浏览"}
+            <kbd className="kbd-hint hidden md:inline-flex">U</kbd>
           </Button>
         </div>
 
-        <div className="mx-1 hidden h-5 w-px bg-white/10 sm:block" />
-
-        <div className="flex items-center gap-1.5">
+        {/* 自动播放控制组 */}
+        <div className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-ink-950/65 p-0.5 pr-1.5">
           <IconButton
-            label={playing ? "暂停自动播放（空格）" : "自动播放（空格）"}
+            label={playing ? "暂停自动播放 (空格)" : "自动播放 (空格)"}
             icon={playing ? Pause : Play}
-            variant="secondary"
+            variant="ghost"
+            size="sm"
             active={playing}
             aria-keyshortcuts="Space"
             onClick={onTogglePlayback}
@@ -533,7 +542,7 @@ export function PhotoViewer({
               if (value === 2 || value === 3 || value === 5 || value === 10) onAutoplayIntervalChange(value);
             }}
             wrapperClassName="[&>span:first-child]:hidden"
-            className="min-w-[76px]"
+            className="h-6 min-w-[66px] border-0 bg-transparent shadow-none"
           >
             <option value="2">2 秒</option>
             <option value="3">3 秒</option>
@@ -542,48 +551,55 @@ export function PhotoViewer({
           </Select>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-1">
-          <Button
-            variant={zoomMode === "fit" ? "secondary" : "ghost"}
-            size="sm"
-            disabled={!photo}
-            title="适应屏幕"
-            aria-pressed={zoomMode === "fit"}
-            data-testid="fit-button"
-            onClick={handleFit}
-          >
-            适应
-          </Button>
-          <Button
-            variant={zoomMode === "actual" ? "secondary" : "ghost"}
-            size="sm"
-            disabled={!photo}
-            title="以 100% 查看（使用原图预览）"
-            aria-pressed={zoomMode === "actual"}
-            data-testid="actual-size-button"
-            onClick={handleActual}
-          >
-            100%
-          </Button>
-          <IconButton label="缩小" icon={ZoomOut} size="sm" disabled={!photo || zoom <= 1.01} onClick={handleZoomOut} />
-          <IconButton label="放大" icon={ZoomIn} size="sm" disabled={!photo} onClick={handleZoomIn} />
-          <span className="mx-1 hidden h-5 w-px bg-white/10 sm:block" />
-          <IconButton
-            label={fullscreen ? "退出全屏（Esc）" : "全屏查看"}
-            icon={fullscreen ? Minimize2 : Maximize2}
-            size="sm"
-            aria-keyshortcuts="Escape"
-            onClick={() => void toggleFullscreen()}
-          />
-          <IconButton
-            label={infoOpen ? "隐藏照片信息（I）" : "显示照片信息（I）"}
-            icon={infoOpen ? PanelRightClose : PanelRightOpen}
-            size="sm"
-            active={infoOpen}
-            aria-keyshortcuts="I"
-            data-testid="info-button"
-            onClick={onToggleInfo}
-          />
+        {/* 放大镜缩放、全屏与信息栏切换组 */}
+        <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-0.5 rounded-md border border-white/[0.06] bg-ink-950/65 p-0.5">
+            <Button
+              variant={zoomMode === "fit" ? "secondary" : "ghost"}
+              size="sm"
+              disabled={!photo}
+              title="适应屏幕"
+              aria-pressed={zoomMode === "fit"}
+              data-testid="fit-button"
+              onClick={handleFit}
+            >
+              适应
+            </Button>
+            <Button
+              variant={zoomMode === "actual" ? "secondary" : "ghost"}
+              size="sm"
+              disabled={!photo}
+              title="以 100% 查看（使用原图预览）"
+              aria-pressed={zoomMode === "actual"}
+              data-testid="actual-size-button"
+              onClick={handleActual}
+              className="font-mono"
+            >
+              100%
+            </Button>
+            <span className="mx-0.5 h-4 w-px bg-white/[0.08]" aria-hidden="true" />
+            <IconButton label="缩小" icon={ZoomOut} size="sm" disabled={!photo || zoom <= 1.01} onClick={handleZoomOut} />
+            <IconButton label="放大" icon={ZoomIn} size="sm" disabled={!photo} onClick={handleZoomIn} />
+          </div>
+
+          <div className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-ink-950/65 p-0.5">
+            <IconButton
+              label={fullscreen ? "退出全屏 (Esc) " : "全屏查看"}
+              icon={fullscreen ? Minimize2 : Maximize2}
+              size="sm"
+              aria-keyshortcuts="Escape"
+              onClick={() => void toggleFullscreen()}
+            />
+            <IconButton
+              label={infoOpen ? "隐藏照片信息 (I) " : "显示照片信息 (I) "}
+              icon={infoOpen ? PanelRightClose : PanelRightOpen}
+              size="sm"
+              active={infoOpen}
+              aria-keyshortcuts="I"
+              data-testid="info-button"
+              onClick={onToggleInfo}
+            />
+          </div>
         </div>
       </div>
     </div>

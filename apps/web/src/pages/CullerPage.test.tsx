@@ -466,11 +466,11 @@ describe("CullerPage 键盘与状态操作", () => {
     renderCuller();
     await waitForFirstPhoto();
 
-    fireEvent.click(screen.getByRole("button", { name: "自动播放（空格）" }));
-    await screen.findByRole("button", { name: "暂停自动播放（空格）" });
+    fireEvent.click(screen.getByRole("button", { name: "自动播放 (空格)" }));
+    await screen.findByRole("button", { name: "暂停自动播放 (空格)" });
 
     fireEvent.keyDown(document.body, { key: "f" });
-    await screen.findByRole("button", { name: "自动播放（空格）" });
+    await screen.findByRole("button", { name: "自动播放 (空格)" });
     await waitFor(() => {
       expect(apiMock.patchPhotoState).toHaveBeenCalledWith(
         "p1",
